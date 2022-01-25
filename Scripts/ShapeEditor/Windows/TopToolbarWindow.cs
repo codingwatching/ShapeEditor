@@ -108,7 +108,7 @@ namespace AeternumGames.ShapeEditor
 
         public override void OnRender()
         {
-            size = new float2(editor.position.width, 42f);
+            size = new float2(editor.width, 42f);
 
             var shapeSelectMode = editor.shapeSelectMode;
             vertexSelectButton.isChecked = shapeSelectMode == ShapeSelectMode.Vertex;

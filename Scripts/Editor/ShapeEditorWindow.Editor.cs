@@ -64,7 +64,7 @@ namespace AeternumGames.ShapeEditor
             }
 
             // get the mouse position.
-            float2 eMousePosition = e.mousePosition;
+            float2 eMousePosition = math.floor(e.mousePosition * EditorGUIUtility.pixelsPerPoint);
 
             // use a passive hot control to detect mouse up outside of the editor window.
             int hotControlId = GUIUtility.GetControlID(FocusType.Passive);
@@ -130,10 +130,11 @@ namespace AeternumGames.ShapeEditor
             {
                 if (IsMousePositionInViewport(eMousePosition))
                 {
+                    var previousMousePosition = mousePosition;
                     var previousMouseGridPosition = mouseGridPosition;
                     mousePosition = eMousePosition;
                     mouseGridPosition = ScreenPointToGrid(mousePosition);
-                    OnMouseDrag(e.button, e.delta, mouseGridPosition - previousMouseGridPosition);
+                    OnMouseDrag(e.button, mousePosition - previousMousePosition, mouseGridPosition - previousMouseGridPosition);
 
                     e.Use();
                 }
@@ -196,14 +197,20 @@ namespace AeternumGames.ShapeEditor
             }
         }
 
+        /// <summary>The width of the window in screen space multiplied by UI scaling.</summary>
+        internal float width => math.floor(position.width * EditorGUIUtility.pixelsPerPoint);
+
+        /// <summary>The height of the window in screen space multiplied by UI scaling.</summary>
+        internal float height => math.floor(position.height * EditorGUIUtility.pixelsPerPoint);
+
         internal Rect GetViewportRect()
         {
-            return new Rect(0, 0, position.width, position.height);
+            return new Rect(0, 0, width, height);
         }
 
         private bool IsMousePositionInViewport(float2 mousePosition)
         {
-            return new Rect(0, 0, position.width, position.height).Contains(mousePosition);
+            return GetViewportRect().Contains(mousePosition);
         }
 
         /// <summary>While this function is called every repaint, it will set the mouse cursor.</summary>
