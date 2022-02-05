@@ -42,7 +42,7 @@ namespace AeternumGames.ShapeEditor
                 // set the desired mouse cursor.
                 if (desiredMouseCursor != MouseCursor.Arrow)
                 {
-                    EditorGUIUtility.AddCursorRect(GetViewportRect(), desiredMouseCursor);
+                    EditorGUIUtility.AddCursorRect(new Rect(0, 0, position.width, position.height), desiredMouseCursor);
 
                     // set the custom mouse cursor texture.
                     if (customMouseCursor != null)
@@ -64,7 +64,7 @@ namespace AeternumGames.ShapeEditor
             }
 
             // get the mouse position.
-            float2 eMousePosition = math.floor(e.mousePosition * EditorGUIUtility.pixelsPerPoint);
+            float2 eMousePosition = math.floor(e.mousePosition * EditorGUIUtility.pixelsPerPoint / dpiScalingMultiplier);
 
             // use a passive hot control to detect mouse up outside of the editor window.
             int hotControlId = GUIUtility.GetControlID(FocusType.Passive);
@@ -197,16 +197,18 @@ namespace AeternumGames.ShapeEditor
             }
         }
 
+        /// <summary>
+        /// The nearest integer based on <see cref="EditorGUIUtility.pixelsPerPoint"/> used for UI scaling.
+        /// </summary>
+        private float dpiScalingMultiplier => math.round(EditorGUIUtility.pixelsPerPoint);
+
         /// <summary>The width of the window in screen space multiplied by UI scaling.</summary>
-        internal float width => math.floor(position.width * EditorGUIUtility.pixelsPerPoint);
+        internal float width => math.floor(position.width * EditorGUIUtility.pixelsPerPoint / dpiScalingMultiplier);
 
         /// <summary>The height of the window in screen space multiplied by UI scaling.</summary>
-        internal float height => math.floor(position.height * EditorGUIUtility.pixelsPerPoint);
+        internal float height => math.floor(position.height * EditorGUIUtility.pixelsPerPoint / dpiScalingMultiplier);
 
-        internal Rect GetViewportRect()
-        {
-            return new Rect(0, 0, width, height);
-        }
+        internal Rect GetViewportRect() => new Rect(0, 0, width, height);
 
         private bool IsMousePositionInViewport(float2 mousePosition)
         {
