@@ -13,16 +13,22 @@ namespace AeternumGames.ShapeEditor
         internal int revolveExtrudePrecision = 8;
 
         [SerializeField]
-        [Range(0.0f, 360.0f)]
+        [Range(0.1f, 360.0f)]
         internal float revolveExtrudeDegrees = 90f;
 
         [SerializeField]
         [Min(0f)]
         internal float revolveExtrudeRadius = 2f;
 
+        [SerializeField]
+        internal float revolveExtrudeHeight = 0f;
+
+        [SerializeField]
+        internal bool revolveExtrudeSloped = false;
+
         private void RevolveExtrude_Rebuild()
         {
-            var mesh = MeshGenerator.CreateRevolveExtrudedMesh(convexPolygons2D, revolveExtrudePrecision, revolveExtrudeDegrees, revolveExtrudeRadius);
+            var mesh = MeshGenerator.CreateRevolveExtrudedMesh(convexPolygons2D, revolveExtrudePrecision, revolveExtrudeDegrees, revolveExtrudeRadius, revolveExtrudeHeight, revolveExtrudeSloped);
             OnShapeEditorMesh(mesh);
         }
     }

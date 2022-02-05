@@ -12,11 +12,14 @@ namespace AeternumGames.ShapeEditor
     public class ShapeEditorTargetInspector : Editor
     {
         private SerializedProperty spTargetMode => serializedObject.FindProperty(nameof(ShapeEditorTarget.targetMode));
+        private SerializedProperty spPolygonDoubleSided => serializedObject.FindProperty(nameof(ShapeEditorTarget.polygonDoubleSided));
         private SerializedProperty spFixedExtrudeDistance => serializedObject.FindProperty(nameof(ShapeEditorTarget.fixedExtrudeDistance));
         private SerializedProperty spSplineExtrudePrecision => serializedObject.FindProperty(nameof(ShapeEditorTarget.splineExtrudePrecision));
         private SerializedProperty spRevolveExtrudePrecision => serializedObject.FindProperty(nameof(ShapeEditorTarget.revolveExtrudePrecision));
         private SerializedProperty spRevolveExtrudeDegrees => serializedObject.FindProperty(nameof(ShapeEditorTarget.revolveExtrudeDegrees));
         private SerializedProperty spRevolveExtrudeRadius => serializedObject.FindProperty(nameof(ShapeEditorTarget.revolveExtrudeRadius));
+        private SerializedProperty spRevolveExtrudeHeight => serializedObject.FindProperty(nameof(ShapeEditorTarget.revolveExtrudeHeight));
+        private SerializedProperty spRevolveExtrudeSloped => serializedObject.FindProperty(nameof(ShapeEditorTarget.revolveExtrudeSloped));
 
         public override void OnInspectorGUI()
         {
@@ -55,23 +58,26 @@ namespace AeternumGames.ShapeEditor
 
         private void Polygon_OnGUI()
         {
+            EditorGUILayout.PropertyField(spPolygonDoubleSided, new GUIContent("Double Sided"));
         }
 
         private void FixedExtrude_OnGUI()
         {
-            EditorGUILayout.PropertyField(spFixedExtrudeDistance);
+            EditorGUILayout.PropertyField(spFixedExtrudeDistance, new GUIContent("Distance"));
         }
 
         private void SplineExtrude_OnGUI()
         {
-            EditorGUILayout.PropertyField(spSplineExtrudePrecision);
+            EditorGUILayout.PropertyField(spSplineExtrudePrecision, new GUIContent("Precision"));
         }
 
         private void RevolveExtrude_OnGUI()
         {
-            EditorGUILayout.PropertyField(spRevolveExtrudePrecision);
-            EditorGUILayout.PropertyField(spRevolveExtrudeDegrees);
-            EditorGUILayout.PropertyField(spRevolveExtrudeRadius);
+            EditorGUILayout.PropertyField(spRevolveExtrudePrecision, new GUIContent("Precision"));
+            EditorGUILayout.PropertyField(spRevolveExtrudeDegrees, new GUIContent("Degrees"));
+            EditorGUILayout.PropertyField(spRevolveExtrudeRadius, new GUIContent("Radius"));
+            EditorGUILayout.PropertyField(spRevolveExtrudeHeight, new GUIContent("Spiral Height"));
+            EditorGUILayout.PropertyField(spRevolveExtrudeSloped, new GUIContent("Spiral Sloped"));
         }
 
         private void ShapeEditorMenu_OnGUI()

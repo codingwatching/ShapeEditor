@@ -182,8 +182,55 @@ namespace AeternumGames.ShapeEditor
                     }
                 }
             }
+            else
+            {
+                // mark hidden edges in 2d to prevent building interior 3d polygons. in the extrude
+                // functions the vertices are always visited from index zero upwards, so we can mark
+                // the first vertex of an edge as being a hidden surface.
+                MarkHiddenSurfaces(convexPolygons);
+            }
 
             return convexPolygons;
+        }
+
+        /// <summary>
+        /// The hidden surface removal algorithm, preventing interior 3D polygons. It iterates over
+        /// all convex polygons and marks whether this and the next vertex are part of a hidden edge
+        /// that should not be extruded.
+        /// </summary>
+        /// <param name="convexPolygons">The collection of 2D polygons of <see cref="GenerateConvexPolygons"/></param>
+        private void MarkHiddenSurfaces(List<Polygon> convexPolygons)
+        {
+            // iterate over every 2d convex polygon:
+            var convexPolygonsCount = convexPolygons.Count;
+            for (int j = 0; j < convexPolygonsCount; j++)
+            {
+                // for every vertex in the polygon:
+                var vertices = convexPolygons[j];
+                var vertexCount = vertices.Count;
+                for (int i = 0; i < vertexCount; i++)
+                {
+                    // find the center position of the edge.
+                    var thisVertex = vertices[i];
+                    var nextVertex = vertices.NextVertex(i);
+                    var center = Vector3.Lerp(thisVertex.position, nextVertex.position, 0.5f);
+
+                    // iterate over every 2d convex polygon:
+                    for (int k = 0; k < convexPolygonsCount; k++)
+                    {
+                        // skip if we are about to compare the polygon against the same polygon.
+                        if (j == k) continue;
+
+                        // check whether the other polygon contains the center point.
+                        if (convexPolygons[k].ContainsPoint2D(ref center) >= 0)
+                        {
+                            // mark the edge as hidden.
+                            convexPolygons[j][i] = new Vertex(thisVertex.position, thisVertex.uv0, true);
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }

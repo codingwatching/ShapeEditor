@@ -45,6 +45,10 @@ namespace AeternumGames.ShapeEditor
                 triangleOffset = vertices.Count;
             }
 
+            // if the vertex count exceeds 16-bit we switch to 32-bit.
+            if (triangleOffset > 65535)
+                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+
             mesh.SetVertices(vertices);
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(triangles, 0);
@@ -70,6 +74,20 @@ namespace AeternumGames.ShapeEditor
                 planes[i] = polygon.plane.flipped;
             }
             return planes;
+        }
+
+        /// <summary>Converts the polygons to a list of points (point cloud).</summary>
+        /// <returns>The vertex positions of the convex mesh.</returns>
+        public List<Vector3> ToPoints()
+        {
+            var count = Count;
+            var points = new List<Vector3>();
+            for (int i = 0; i < count; i++)
+            {
+                var polygon = this[i];
+                points.AddRange(polygon.GetVertices());
+            }
+            return points;
         }
 
         /// <summary>

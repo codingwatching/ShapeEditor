@@ -12,7 +12,8 @@ namespace AeternumGames.ShapeEditor
     {
         /// <summary>Creates a flat mesh out of convex polygons.</summary>
         /// <param name="convexPolygons">The decomposed convex polygons.</param>
-        public static Mesh CreatePolygonMesh(List<Polygon> convexPolygons)
+        /// <param name="doubleSided">Whether the polygon is double sided.</param>
+        public static Mesh CreatePolygonMesh(List<Polygon> convexPolygons, bool doubleSided)
         {
             var polygonMesh = new PolygonMesh();
 
@@ -23,6 +24,12 @@ namespace AeternumGames.ShapeEditor
                 convexPolygons[i].ApplyXYBasedUV0(new Vector2(0.5f, 0.5f));
                 // add the front polygon.
                 polygonMesh.Add(convexPolygons[i]);
+
+                if (doubleSided)
+                {
+                    // add the back polygon.
+                    polygonMesh.Add(convexPolygons[i].flipped);
+                }
             }
 
             var mesh = polygonMesh.ToMesh();
@@ -48,6 +55,9 @@ namespace AeternumGames.ShapeEditor
                 // create a new polygon mesh for the front polygon.
                 var brush = new PolygonMesh();
                 polygonMeshes.Add(brush);
+
+                // copy the boolean operator of the 2D polygon into the polygon mesh.
+                brush.booleanOperator = convexPolygons[i].booleanOperator;
 
                 // add the front polygon to the mesh.
                 brush.Add(convexPolygons[i]);
@@ -144,8 +154,9 @@ namespace AeternumGames.ShapeEditor
         /// <param name="convexPolygons">The decomposed convex polygons.</param>
         /// <param name="precision">The precision is the amount of brushes per step.</param>
         /// <param name="degrees">The revolve degrees between -360 to 360.</param>
-        /// <param name="diameter">The revolve diameter.</param>
-        public static List<PolygonMesh> CreateRevolveExtrudedPolygonMeshes(List<Polygon> convexPolygons, int precision, float degrees, float diameter)
+        /// <param name="diameter">The inner diameter to revolve around.</param>
+        /// <param name="height">The target height to be reached by offsetting the individual meshes.</param>
+        public static List<PolygonMesh> CreateRevolveExtrudedPolygonMeshes(List<Polygon> convexPolygons, int precision, float degrees, float diameter, float height)
         {
             var polygonMeshes = new List<PolygonMesh>();
 
@@ -172,8 +183,13 @@ namespace AeternumGames.ShapeEditor
 
                     for (int v = 0; v < polyVertexCount; v++)
                     {
-                        poly[v] = new Vertex(MathEx.RotatePointAroundPivot(poly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, j / (float)precision), 0.0f)), poly[v].uv0);
-                        nextPoly[v] = new Vertex(MathEx.RotatePointAroundPivot(nextPoly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, (j + 1) / (float)precision), 0.0f)), nextPoly[v].uv0);
+                        // calculate the step height.
+                        var heightOffset = new Vector3();
+                        if (precision >= 2)
+                            heightOffset.y = (j / ((float)precision - 1)) * height;
+
+                        poly[v] = new Vertex(heightOffset + MathEx.RotatePointAroundPivot(poly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, j / (float)precision), 0.0f)), poly[v].uv0);
+                        nextPoly[v] = new Vertex(heightOffset + MathEx.RotatePointAroundPivot(nextPoly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, (j + 1) / (float)precision), 0.0f)), nextPoly[v].uv0);
                     }
 
                     brush.Add(poly);
@@ -214,10 +230,19 @@ namespace AeternumGames.ShapeEditor
         /// <param name="convexPolygons">The decomposed convex polygons.</param>
         /// <param name="precision">The precision is the amount of brushes per step.</param>
         /// <param name="degrees">The revolve degrees between -360 to 360.</param>
-        /// <param name="diameter">The revolve diameter.</param>
-        public static Mesh CreateRevolveExtrudedMesh(List<Polygon> convexPolygons, int precision, float degrees, float diameter)
+        /// <param name="diameter">The inner diameter to revolve around.</param>
+        /// <param name="height">The target height to be reached by offsetting the individual meshes.</param>
+        /// <param name="sloped">Whether the individual meshes are sloped towards the target height.</param>
+        public static Mesh CreateRevolveExtrudedMesh(List<Polygon> convexPolygons, int precision, float degrees, float diameter, float height, bool sloped)
         {
             var polygonMeshes = new List<PolygonMesh>();
+
+            var slopedHeightOffset = new Vector3();
+            if (sloped && precision >= 2)
+                slopedHeightOffset = new Vector3(0.0f, height / precision, 0.0f);
+
+            // the ending height has to be reduced so that it aligns perfectly with the non-sloped version.
+            height -= slopedHeightOffset.y;
 
             var convexPolygonsCount = convexPolygons.Count;
             for (int i = 0; i < convexPolygonsCount; i++)
@@ -239,17 +264,32 @@ namespace AeternumGames.ShapeEditor
 
                     for (int v = 0; v < polyVertexCount; v++)
                     {
-                        poly[v] = new Vertex(MathEx.RotatePointAroundPivot(poly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, j / (float)precision), 0.0f)), poly[v].uv0);
-                        nextPoly[v] = new Vertex(MathEx.RotatePointAroundPivot(nextPoly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, (j + 1) / (float)precision), 0.0f)), nextPoly[v].uv0);
+                        // calculate the step height.
+                        var heightOffset = new Vector3();
+                        if (precision >= 2)
+                            heightOffset.y = (j / ((float)precision - 1)) * height;
+
+                        poly[v] = new Vertex(heightOffset + MathEx.RotatePointAroundPivot(poly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, j / (float)precision), 0.0f)), poly[v].uv0, poly[v].hidden);
+                        nextPoly[v] = new Vertex(heightOffset + slopedHeightOffset + MathEx.RotatePointAroundPivot(nextPoly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, (j + 1) / (float)precision), 0.0f)), nextPoly[v].uv0, nextPoly[v].hidden);
                     }
 
-                    if (j == 0) brush.Add(poly);
-                    if (j == precision - 1) brush.Add(nextPoly.flipped);
+                    if (height == 0f || sloped)
+                    {
+                        if (j == 0) brush.Add(poly);
+                        if (j == precision - 1) brush.Add(nextPoly.flipped);
+                    }
+                    else
+                    {
+                        brush.Add(poly);
+                        brush.Add(nextPoly.flipped);
+                    }
 
                     // fill the gap with quads "extruding" the shape.
                     Polygon extrudedPolygon;
                     for (int k = 0; k < polyVertexCount - 1; k++)
                     {
+                        if (poly[k].hidden) continue;
+
                         extrudedPolygon = new Polygon(new Vertex[] {
                             poly[k],
                             nextPoly[k],
@@ -262,15 +302,18 @@ namespace AeternumGames.ShapeEditor
                     }
 
                     // one more face that wraps around to index 0.
-                    extrudedPolygon = new Polygon(new Vertex[] {
-                        poly[polyVertexCount - 1],
-                        nextPoly[polyVertexCount - 1],
-                        nextPoly[0],
-                        poly[0],
-                    });
+                    if (!poly[polyVertexCount - 1].hidden)
+                    {
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[polyVertexCount - 1],
+                            nextPoly[polyVertexCount - 1],
+                            nextPoly[0],
+                            poly[0],
+                        });
 
-                    extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
-                    brush.Add(extrudedPolygon);
+                        extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
+                        brush.Add(extrudedPolygon);
+                    }
                 }
             }
 

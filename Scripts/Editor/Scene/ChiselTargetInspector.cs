@@ -8,38 +8,33 @@ namespace AeternumGames.ShapeEditor
     /// <summary>
     /// Represents a mesh target that, when selected, can receive meshes created by the 2D Shape Editor.
     /// </summary>
-    [CustomEditor(typeof(RealtimeCSGTarget))]
-    public class RealtimeCSGTargetInspector : Editor
+    [CustomEditor(typeof(ChiselTarget))]
+    public class ChiselTargetInspector : Editor
     {
-        private SerializedProperty spTargetMode => serializedObject.FindProperty(nameof(RealtimeCSGTarget.targetMode));
-        private SerializedProperty spFixedExtrudeDistance => serializedObject.FindProperty(nameof(RealtimeCSGTarget.fixedExtrudeDistance));
-        private SerializedProperty spSplineExtrudePrecision => serializedObject.FindProperty(nameof(RealtimeCSGTarget.splineExtrudePrecision));
-        private SerializedProperty spRevolveExtrudePrecision => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudePrecision));
-        private SerializedProperty spRevolveExtrudeDegrees => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudeDegrees));
-        private SerializedProperty spRevolveExtrudeRadius => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudeRadius));
-        private SerializedProperty spRevolveExtrudeHeight => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudeHeight));
+        private SerializedProperty spTargetMode => serializedObject.FindProperty(nameof(ChiselTarget.targetMode));
+        private SerializedProperty spFixedExtrudeDistance => serializedObject.FindProperty(nameof(ChiselTarget.fixedExtrudeDistance));
+        private SerializedProperty spRevolveExtrudePrecision => serializedObject.FindProperty(nameof(ChiselTarget.revolveExtrudePrecision));
+        private SerializedProperty spRevolveExtrudeDegrees => serializedObject.FindProperty(nameof(ChiselTarget.revolveExtrudeDegrees));
+        private SerializedProperty spRevolveExtrudeRadius => serializedObject.FindProperty(nameof(ChiselTarget.revolveExtrudeRadius));
+        private SerializedProperty spRevolveExtrudeHeight => serializedObject.FindProperty(nameof(ChiselTarget.revolveExtrudeHeight));
 
         public override void OnInspectorGUI()
         {
             ShapeEditorMenu_OnGUI();
 
-            var shapeEditorTarget = (RealtimeCSGTarget)target;
+            var shapeEditorTarget = (ChiselTarget)target;
 
             bool rebuild = GUILayout.Button("Rebuild");
 
             EditorGUILayout.PropertyField(spTargetMode);
 
-            switch ((RealtimeCSGTargetMode)spTargetMode.enumValueIndex)
+            switch ((ChiselTargetMode)spTargetMode.enumValueIndex)
             {
-                case RealtimeCSGTargetMode.FixedExtrude:
+                case ChiselTargetMode.FixedExtrude:
                     FixedExtrude_OnGUI();
                     break;
 
-                case RealtimeCSGTargetMode.SplineExtrude:
-                    SplineExtrude_OnGUI();
-                    break;
-
-                case RealtimeCSGTargetMode.RevolveExtrude:
+                case ChiselTargetMode.RevolveExtrude:
                     RevolveExtrude_OnGUI();
                     break;
             }
@@ -55,11 +50,6 @@ namespace AeternumGames.ShapeEditor
             EditorGUILayout.PropertyField(spFixedExtrudeDistance);
         }
 
-        private void SplineExtrude_OnGUI()
-        {
-            EditorGUILayout.PropertyField(spSplineExtrudePrecision);
-        }
-
         private void RevolveExtrude_OnGUI()
         {
             EditorGUILayout.PropertyField(spRevolveExtrudePrecision, new GUIContent("Precision"));
@@ -70,7 +60,7 @@ namespace AeternumGames.ShapeEditor
 
         private void ShapeEditorMenu_OnGUI()
         {
-            var shapeEditorTarget = (RealtimeCSGTarget)target;
+            var shapeEditorTarget = (ChiselTarget)target;
 
             GUILayout.BeginHorizontal(EditorStyles.toolbar);
             GUIStyle createBrushStyle = ShapeEditorResources.toolbarButtonStyle;

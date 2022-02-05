@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace AeternumGames.ShapeEditor
 {
-    public partial class RealtimeCSGTarget
+    public partial class ChiselTarget
     {
         // revolves the shape around the center.
         [SerializeField]
@@ -31,9 +31,7 @@ namespace AeternumGames.ShapeEditor
             for (int i = 0; i < polygonMeshesCount; i++)
             {
                 var polygonMesh = polygonMeshes[i];
-                var brush = ExternalRealtimeCSG.CreateBrushFromPlanes("Shape Editor Brush", polygonMesh.ToPlanes(), polygonMesh.booleanOperator);
-                if (brush != null)
-                    brush.transform.SetParent(parent, false);
+                ExternalChisel.CreateBrushFromPoints(parent, "Shape Editor Brush", polygonMesh.ToPoints().ToArray(), polygonMesh.booleanOperator);
             }
 
             ExternalRealtimeCSG.AddCSGOperationComponent(gameObject);
