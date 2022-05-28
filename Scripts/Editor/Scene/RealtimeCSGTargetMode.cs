@@ -5,10 +5,12 @@ namespace AeternumGames.ShapeEditor
     /// <summary>The operating mode of the target object.</summary>
     public enum RealtimeCSGTargetMode
     {
-        FixedExtrude,
+        FixedExtrude = 0,
+        ScaledExtrude = 4,
         [UnityEngine.InspectorName("Spline Extrude (Experimental!)")]
-        SplineExtrude,
-        RevolveExtrude,
+        SplineExtrude = 1,
+        RevolveExtrude = 2,
+        LinearStaircase = 3,
     }
 }
 

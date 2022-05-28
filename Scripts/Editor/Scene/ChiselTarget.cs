@@ -47,6 +47,14 @@ namespace AeternumGames.ShapeEditor
                 case ChiselTargetMode.RevolveExtrude:
                     RevolveExtrude_Rebuild();
                     break;
+
+                case ChiselTargetMode.LinearStaircase:
+                    LinearStaircase_Rebuild();
+                    break;
+
+                case ChiselTargetMode.ScaledExtrude:
+                    ScaledExtrude_Rebuild();
+                    break;
             }
         }
 

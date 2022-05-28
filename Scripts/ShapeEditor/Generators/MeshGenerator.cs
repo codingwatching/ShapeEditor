@@ -60,7 +60,7 @@ namespace AeternumGames.ShapeEditor
                 brush.booleanOperator = convexPolygons[i].booleanOperator;
 
                 // add the front polygon to the mesh.
-                brush.Add(convexPolygons[i]);
+                brush.Add(new Polygon(convexPolygons[i]));
 
                 // extrude the front polygon.
                 foreach (var extrudedPolygon in convexPolygons[i].Extrude(distance))
@@ -347,6 +347,335 @@ namespace AeternumGames.ShapeEditor
             mesh.RecalculateNormals();
             mesh.RecalculateTangents();
 
+            return mesh;
+        }
+
+        /// <summary>[Convex] Creates a mesh by placing extruded convex polygons along a linear slope.</summary>
+        /// <param name="convexPolygons">The decomposed convex polygons.</param>
+        /// <param name="precision">The precision is the amount of brushes per step.</param>
+        /// <param name="distance">The total length or distance of the staircase in meters.</param>
+        /// <param name="height">The target height to be reached by offsetting the individual meshes.</param>
+        /// <param name="sloped">Whether the individual meshes are sloped towards the target height.</param>
+        public static List<PolygonMesh> CreateLinearStaircaseMeshes(PolygonMesh convexPolygons, int precision, float distance, float height, bool sloped)
+        {
+            var convexPolygonsCount = convexPolygons.Count;
+            var polygonMeshes = new List<PolygonMesh>();
+
+            // sloped stairs (a ramp) can only exist out of one brush.
+            var slopedHeightOffset = new Vector3();
+            if (sloped)
+            {
+                precision = 1;
+                slopedHeightOffset = new Vector3(0.0f, height, 0.0f);
+            }
+
+            // the ending height has to be reduced so that it aligns perfectly with the non-sloped version.
+            height -= slopedHeightOffset.y;
+
+            for (int j = 0; j < precision; j++)
+            {
+                // calculate the step forward distance.
+                var forward = new Vector3(0.0f, 0.0f, (j / (float)precision) * distance);
+                var forwardNext = new Vector3(0.0f, 0.0f, ((j + 1) / (float)precision) * distance);
+
+                // calculate the step height.
+                var heightOffset = new Vector3();
+                if (precision >= 2)
+                    heightOffset.y = (j / ((float)precision - 1)) * height;
+
+                for (int i = 0; i < convexPolygonsCount; i++)
+                {
+                    // create a new polygon mesh for the front polygon.
+                    var brush = new PolygonMesh();
+                    polygonMeshes.Add(brush);
+
+                    // copy the boolean operator of the 2D polygon into the polygon mesh.
+                    brush.booleanOperator = convexPolygons[i].booleanOperator;
+
+                    var poly = new Polygon(convexPolygons[i]);
+                    var polyVertexCount = poly.Count;
+                    poly.Translate(forward + heightOffset);
+
+                    var nextPoly = new Polygon(convexPolygons[i]);
+                    nextPoly.Translate(forwardNext + heightOffset + slopedHeightOffset);
+
+                    brush.Add(poly);
+                    brush.Add(nextPoly.flipped);
+
+                    // fill the gap with quads "extruding" the shape.
+                    Polygon extrudedPolygon;
+                    for (int k = 0; k < polyVertexCount - 1; k++)
+                    {
+                        if (poly[k].hidden) continue;
+
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[k],
+                            nextPoly[k],
+                            nextPoly[k + 1],
+                            poly[k + 1],
+                        });
+
+                        brush.Add(extrudedPolygon);
+                    }
+
+                    // one more face that wraps around to index 0.
+                    if (!poly[polyVertexCount - 1].hidden)
+                    {
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[polyVertexCount - 1],
+                            nextPoly[polyVertexCount - 1],
+                            nextPoly[0],
+                            poly[0],
+                        });
+
+                        brush.Add(extrudedPolygon);
+                    }
+                }
+            }
+
+            return polygonMeshes;
+        }
+
+        /// <summary>[Concave] Creates a mesh by placing extruded convex polygons along a linear slope.</summary>
+        /// <param name="convexPolygons">The decomposed convex polygons.</param>
+        /// <param name="precision">The precision is the amount of brushes per step.</param>
+        /// <param name="distance">The total length or distance of the staircase in meters.</param>
+        /// <param name="height">The target height to be reached by offsetting the individual meshes.</param>
+        /// <param name="sloped">Whether the individual meshes are sloped towards the target height.</param>
+        public static Mesh CreateLinearStaircaseMesh(PolygonMesh convexPolygons, int precision, float distance, float height, bool sloped)
+        {
+            var convexPolygonsCount = convexPolygons.Count;
+            var polygonMeshes = new List<PolygonMesh>();
+
+            // sloped stairs (a ramp) can only exist out of one brush.
+            var slopedHeightOffset = new Vector3();
+            if (sloped)
+            {
+                precision = 1;
+                slopedHeightOffset = new Vector3(0.0f, height, 0.0f);
+            }
+
+            // the ending height has to be reduced so that it aligns perfectly with the non-sloped version.
+            height -= slopedHeightOffset.y;
+
+            for (int j = 0; j < precision; j++)
+            {
+                // calculate the step forward distance.
+                var forward = new Vector3(0.0f, 0.0f, (j / (float)precision) * distance);
+                var forwardNext = new Vector3(0.0f, 0.0f, ((j + 1) / (float)precision) * distance);
+
+                // calculate the step height.
+                var heightOffset = new Vector3();
+                if (precision >= 2)
+                    heightOffset.y = (j / ((float)precision - 1)) * height;
+
+                for (int i = 0; i < convexPolygonsCount; i++)
+                {
+                    // create a new polygon mesh for the front polygon.
+                    var brush = new PolygonMesh();
+                    polygonMeshes.Add(brush);
+
+                    var poly = new Polygon(convexPolygons[i]);
+                    var polyVertexCount = poly.Count;
+                    poly.Translate(forward + heightOffset);
+                    poly.ApplyXYBasedUV0(new Vector2(0.5f, 0.5f));
+
+                    var nextPoly = new Polygon(convexPolygons[i]);
+                    nextPoly.Translate(forwardNext + heightOffset + slopedHeightOffset);
+                    nextPoly.ApplyXYBasedUV0(new Vector2(0.5f, 0.5f));
+
+                    if (height == 0f || sloped)
+                    {
+                        if (j == 0) brush.Add(poly);
+                        if (j == precision - 1) brush.Add(nextPoly.flipped);
+                    }
+                    else
+                    {
+                        brush.Add(poly);
+                        brush.Add(nextPoly.flipped);
+                    }
+
+                    // fill the gap with quads "extruding" the shape.
+                    Polygon extrudedPolygon;
+                    for (int k = 0; k < polyVertexCount - 1; k++)
+                    {
+                        if (poly[k].hidden) continue;
+
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[k],
+                            nextPoly[k],
+                            nextPoly[k + 1],
+                            poly[k + 1],
+                        });
+
+                        if (sloped)
+                            extrudedPolygon.ApplySabreCSGAutoUV0(new Vector2(0.5f, 0.5f));
+                        else
+                            extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
+                        brush.Add(extrudedPolygon);
+                    }
+
+                    // one more face that wraps around to index 0.
+                    if (!poly[polyVertexCount - 1].hidden)
+                    {
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[polyVertexCount - 1],
+                            nextPoly[polyVertexCount - 1],
+                            nextPoly[0],
+                            poly[0],
+                        });
+
+                        if (sloped)
+                            extrudedPolygon.ApplySabreCSGAutoUV0(new Vector2(0.5f, 0.5f));
+                        else
+                            extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
+                        brush.Add(extrudedPolygon);
+                    }
+                }
+            }
+
+            var polygonMesh = PolygonMesh.Combine(polygonMeshes);
+            var mesh = polygonMesh.ToMesh();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            return mesh;
+        }
+
+        /// <summary>[Convex] Creates a mesh by scaling extruded convex polygons to a point or clipped.</summary>
+        /// <param name="convexPolygons">The decomposed convex polygons.</param>
+        /// <param name="distance">The distance to extrude by.</param>
+        /// <param name="beginScale">The scale of the front polygon.</param>
+        /// <param name="endScale">The scale of the back polygon.</param>
+        /// <param name="offset">The offset from the center to scale towards.</param>
+        public static List<PolygonMesh> CreateScaleExtrudedMeshes(PolygonMesh convexPolygons, float distance, float beginScale, float endScale, Vector2 offset)
+        {
+            if (beginScale == 0f && endScale == 0f)
+                return new List<PolygonMesh>();
+
+            var convexPolygonsCount = convexPolygons.Count;
+            var polygonMeshes = new List<PolygonMesh>();
+
+            for (int i = 0; i < convexPolygonsCount; i++)
+            {
+                // create a new polygon mesh for the front polygon.
+                var brush = new PolygonMesh();
+                polygonMeshes.Add(brush);
+
+                // copy the boolean operator of the 2D polygon into the polygon mesh.
+                brush.booleanOperator = convexPolygons[i].booleanOperator;
+
+                var poly = new Polygon(convexPolygons[i]);
+                poly.Scale(new Vector3(beginScale, beginScale, 1.0f));
+
+                var nextPoly = new Polygon(convexPolygons[i]);
+                nextPoly.Scale(new Vector3(endScale, endScale, 1.0f));
+                nextPoly.Translate(new Vector3(offset.x, offset.y) + new Vector3(0.0f, 0.0f, distance));
+
+                if (beginScale != 0.0f) brush.Add(poly);
+                if (endScale != 0.0f) brush.Add(nextPoly.flipped);
+
+                // fill the gap with quads "extruding" the shape.
+                Polygon extrudedPolygon;
+                var polyVertexCount = poly.Count;
+                for (int k = 0; k < polyVertexCount - 1; k++)
+                {
+                    extrudedPolygon = new Polygon(new Vertex[] {
+                        poly[k],
+                        nextPoly[k],
+                        nextPoly[k + 1],
+                        poly[k + 1],
+                    });
+
+                    brush.Add(extrudedPolygon);
+                }
+
+                // one more face that wraps around to index 0.
+                extrudedPolygon = new Polygon(new Vertex[] {
+                    poly[polyVertexCount - 1],
+                    nextPoly[polyVertexCount - 1],
+                    nextPoly[0],
+                    poly[0],
+                });
+
+                brush.Add(extrudedPolygon);
+            }
+
+            return polygonMeshes;
+        }
+
+        /// <summary>[Concave] Creates a mesh by scaling extruded convex polygons to a point or clipped.</summary>
+        /// <param name="convexPolygons">The decomposed convex polygons.</param>
+        /// <param name="distance">The distance to extrude by.</param>
+        /// <param name="beginScale">The scale of the front polygon.</param>
+        /// <param name="endScale">The scale of the back polygon.</param>
+        /// <param name="offset">The offset from the center to scale towards.</param>
+        public static Mesh CreateScaleExtrudedMesh(PolygonMesh convexPolygons, float distance, float beginScale, float endScale, Vector2 offset)
+        {
+            if (beginScale == 0f && endScale == 0f)
+                return new Mesh();
+
+            var convexPolygonsCount = convexPolygons.Count;
+            var polygonMeshes = new List<PolygonMesh>();
+
+            for (int i = 0; i < convexPolygonsCount; i++)
+            {
+                // create a new polygon mesh for the front polygon.
+                var brush = new PolygonMesh();
+                polygonMeshes.Add(brush);
+
+                var poly = new Polygon(convexPolygons[i]);
+                poly.Scale(new Vector3(beginScale, beginScale, 1.0f));
+
+                // calculate 2D UV coordinates for the front polygon.
+                poly.ApplyXYBasedUV0(new Vector2(0.5f, 0.5f));
+
+                var nextPoly = new Polygon(convexPolygons[i]);
+                nextPoly.Scale(new Vector3(endScale, endScale, 1.0f));
+                nextPoly.Translate(new Vector3(offset.x, offset.y) + new Vector3(0.0f, 0.0f, distance));
+
+                // calculate 2D UV coordinates for the back polygon.
+                nextPoly.ApplyXYBasedUV0(new Vector2(0.5f, 0.5f));
+
+                if (beginScale != 0.0f) brush.Add(poly);
+                if (endScale != 0.0f) brush.Add(nextPoly.flipped);
+
+                // fill the gap with quads "extruding" the shape.
+                Polygon extrudedPolygon;
+                var polyVertexCount = poly.Count;
+                for (int k = 0; k < polyVertexCount - 1; k++)
+                {
+                    if (poly[k].hidden) continue;
+
+                    extrudedPolygon = new Polygon(new Vertex[] {
+                        poly[k],
+                        nextPoly[k],
+                        nextPoly[k + 1],
+                        poly[k + 1],
+                    });
+
+                    extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
+                    brush.Add(extrudedPolygon);
+                }
+
+                // one more face that wraps around to index 0.
+                if (!poly[polyVertexCount - 1].hidden)
+                {
+                    extrudedPolygon = new Polygon(new Vertex[] {
+                        poly[polyVertexCount - 1],
+                        nextPoly[polyVertexCount - 1],
+                        nextPoly[0],
+                        poly[0],
+                    });
+
+                    extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
+                    brush.Add(extrudedPolygon);
+                }
+            }
+
+            var polygonMesh = PolygonMesh.Combine(polygonMeshes);
+            var mesh = polygonMesh.ToMesh();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
             return mesh;
         }
     }
