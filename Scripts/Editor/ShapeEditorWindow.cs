@@ -300,13 +300,27 @@ namespace AeternumGames.ShapeEditor
                             }
                             return false;
 
+                        case KeyCode.I:
+                            if (isCtrlPressed)
+                            {
+                                UserInvertSelection();
+                                return true;
+                            }
+                            return false;
+
                         case KeyCode.S:
                             if (isCtrlPressed)
                             {
                                 UserSaveProjectAs();
                                 return true;
                             }
-                            return false;
+                            else if (isShiftPressed)
+                            {
+                                UserSnapSelectionToGrid();
+                                return true;
+                            }
+                            UserSwitchToScaleTool();
+                            return true;
 
                         case KeyCode.H:
                             UserResetCamera();
@@ -320,12 +334,8 @@ namespace AeternumGames.ShapeEditor
                             UserSwitchToTranslateTool();
                             return true;
 
-                        case KeyCode.E:
-                            UserSwitchToRotateTool();
-                            return true;
-
                         case KeyCode.R:
-                            UserSwitchToScaleTool();
+                            UserSwitchToRotateTool();
                             return true;
 
                         case KeyCode.Delete:

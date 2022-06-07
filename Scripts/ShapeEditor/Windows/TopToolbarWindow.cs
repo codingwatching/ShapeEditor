@@ -71,13 +71,59 @@ namespace AeternumGames.ShapeEditor
             var sceneMenu = menu.Add("Scene");
             sceneMenu.Add("Assign Project To Targets", resources.shapeEditorExtrudeShape, editor.UserAssignProjectToTargets);
             sceneMenu.Separator();
-            sceneMenu.Add("Create Polygon Target", resources.shapeEditorCreatePolygon, editor.UserCreatePolygonTarget);
-            sceneMenu.Add("Create Fixed Extrude Target", resources.shapeEditorExtrudeShape, editor.UserCreateFixedExtrudeTarget);
-            sceneMenu.Add("Create Spline Extrude Target", resources.shapeEditorExtrudeRevolve, editor.UserCreateSplineExtrudeTarget);
+            sceneMenu.Add("Create Polygon", resources.shapeEditorCreatePolygon, editor.UserCreatePolygonTarget);
+            sceneMenu.Add("Create Extruded", resources.shapeEditorExtrudeFixed, editor.UserCreateFixedExtrudeTarget);
+            sceneMenu.Separator();
+            sceneMenu.Add("Create Bevel", resources.shapeEditorExtrudeBevel, editor.UserCreateBevelExtrudeTarget);
+            sceneMenu.Add("Create Curved Staircase", resources.shapeEditorExtrudeCurvedStaircase, editor.UserCreateCurvedStaircaseExtrudeTarget);
+            sceneMenu.Add("Create Linear Staircase", resources.shapeEditorExtrudeLinearStaircase, editor.UserCreateLinearStaircaseExtrudeTarget);
+            sceneMenu.Add("Create Pyramid", resources.shapeEditorExtrudePoint, editor.UserCreateScaledExtrudeTarget);
+            sceneMenu.Add("Create Revolved", resources.shapeEditorExtrudeRevolve, editor.UserCreateRevolvedExtrudeTarget);
+            sceneMenu.Add("Create Slope", resources.shapeEditorExtrudeSlope, editor.UserCreateSlopeExtrudeTarget);
+            sceneMenu.Add("Create Spiral", resources.shapeEditorExtrudeSpiral, editor.UserCreateSpiralExtrudeTarget);
+            sceneMenu.Add("Create Spline", resources.shapeEditorExtrudeSpline, editor.UserCreateSplineExtrudeTarget);
+
+            // RealtimeCSG Extrusion Modes:
+            if (ExternalRealtimeCSG.IsAvailable())
+            {
+                var realtimeCsgMenu = menu.Add("RealtimeCSG");
+
+                realtimeCsgMenu.Add("Assign Project To Targets", resources.shapeEditorExtrudeShape, editor.UserAssignProjectToTargets);
+                realtimeCsgMenu.Separator();
+                realtimeCsgMenu.Add("Create Extruded", resources.shapeEditorExtrudeFixed, editor.UserCreateRealtimeCsgFixedExtrudeTarget);
+                realtimeCsgMenu.Separator();
+                realtimeCsgMenu.Add("Create Bevel", resources.shapeEditorExtrudeBevel, editor.UserCreateRealtimeCsgBevelExtrudeTarget);
+                realtimeCsgMenu.Add("Create Curved Staircase", resources.shapeEditorExtrudeCurvedStaircase, editor.UserCreateRealtimeCsgCurvedStaircaseExtrudeTarget);
+                realtimeCsgMenu.Add("Create Linear Staircase", resources.shapeEditorExtrudeLinearStaircase, editor.UserCreateRealtimeCsgLinearStaircaseExtrudeTarget);
+                realtimeCsgMenu.Add("Create Pyramid", resources.shapeEditorExtrudePoint, editor.UserCreateRealtimeCsgScaledExtrudeTarget);
+                realtimeCsgMenu.Add("Create Revolved", resources.shapeEditorExtrudeRevolve, editor.UserCreateRealtimeCsgRevolvedExtrudeTarget);
+                realtimeCsgMenu.Add("Create Slope", resources.shapeEditorExtrudeSlope, editor.UserCreateRealtimeCsgSlopeExtrudeTarget);
+                realtimeCsgMenu.Add("Create Spline (Experimental!)", resources.shapeEditorExtrudeSpline, editor.UserCreateRealtimeCsgSplineExtrudeTarget);
+            }
+
+            // Chisel Extrusion Modes:
+            if (ExternalChisel.IsAvailable())
+            {
+                var chiselMenu = menu.Add("Chisel");
+
+                chiselMenu.Add("Assign Project To Targets", resources.shapeEditorExtrudeShape, editor.UserAssignProjectToTargets);
+                chiselMenu.Separator();
+                chiselMenu.Add("Create Extruded", resources.shapeEditorExtrudeFixed, editor.UserCreateChiselFixedExtrudeTarget);
+                chiselMenu.Separator();
+                chiselMenu.Add("Create Bevel", resources.shapeEditorExtrudeBevel, editor.UserCreateChiselBevelExtrudeTarget);
+                chiselMenu.Add("Create Curved Staircase", resources.shapeEditorExtrudeCurvedStaircase, editor.UserCreateChiselCurvedStaircaseExtrudeTarget);
+                chiselMenu.Add("Create Linear Staircase", resources.shapeEditorExtrudeLinearStaircase, editor.UserCreateChiselLinearStaircaseExtrudeTarget);
+                chiselMenu.Add("Create Pyramid", resources.shapeEditorExtrudePoint, editor.UserCreateChiselScaledExtrudeTarget);
+                chiselMenu.Add("Create Revolved", resources.shapeEditorExtrudeRevolve, editor.UserCreateChiselRevolvedExtrudeTarget);
+                chiselMenu.Add("Create Slope", resources.shapeEditorExtrudeSlope, editor.UserCreateChiselSlopeExtrudeTarget);
+            }
 
             var viewMenu = menu.Add("View");
-            viewMenu.Add("Textbox Test Window", editor.UserShowTextboxTestWindow);
-            viewMenu.Add("Inspector Window", editor.UserShowInspectorWindow);
+            viewMenu.Add("Background Settings", editor.UserShowBackgroundSettingsWindow);
+            viewMenu.Separator();
+            viewMenu.Add("Bezier Inspector", resources.shapeEditorSegmentBezier, editor.UserShowBezierInspectorWindow);
+            viewMenu.Add("Shape Inspector", resources.shapeEditorShapeCreate, editor.UserShowShapeInspectorWindow);
+            viewMenu.Add("Sine Inspector", resources.shapeEditorSegmentSine, editor.UserShowSineInspectorWindow);
             viewMenu.Separator();
             viewMenu.Add("Reset Camera", editor.UserResetCamera);
 

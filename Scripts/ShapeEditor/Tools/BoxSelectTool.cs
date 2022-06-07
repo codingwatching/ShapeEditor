@@ -137,7 +137,7 @@ namespace AeternumGames.ShapeEditor
                     return false;
 
                 case KeyCode.S:
-                    if (editor.selectedSegmentsCount > 1)
+                    if (!editor.isModifierPressed && editor.selectedSegmentsCount > 1)
                     {
                         editor.UseTool(new ScaleTool());
                         return true;
@@ -152,9 +152,17 @@ namespace AeternumGames.ShapeEditor
                     }
                     return false;
 
+                case KeyCode.E:
+                    if (editor.selectedSegmentsCount > 1)
+                    {
+                        editor.UseTool(new ExtrudeTool());
+                        return true;
+                    }
+                    return false;
+
                 case KeyCode.C:
                     editor.UseTool(new CutTool());
-                    return false;
+                    return true;
 
                 case KeyCode.B:
                     if (editor.selectedSegmentsCount > 0)

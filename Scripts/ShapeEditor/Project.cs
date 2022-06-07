@@ -101,20 +101,24 @@ namespace AeternumGames.ShapeEditor
             for (int i = 0; i < shapesCount; i++)
             {
                 var shape = shapes[i];
-                var shapePolygon = shape.GenerateConcavePolygon(true);
-                var shapePolyboolPolygon = shapePolygon.ToPolybool();
+                var shapePolygons = shape.GenerateConcavePolygons(true);
+                for (int j = 0; j < shapePolygons.Length; j++)
+                {
+                    var shapePolygon = shapePolygons[j];
+                    var shapePolyboolPolygon = shapePolygon.ToPolybool();
 
-                if (shape.booleanOperator == PolygonBooleanOperator.Union)
-                {
-                    var seg2 = polyBool.segments(shapePolyboolPolygon);
-                    var comb = polyBool.combine(finalSegmentList, seg2);
-                    finalSegmentList = polyBool.selectUnion(comb);
-                }
-                else
-                {
-                    var seg2 = polyBool.segments(shapePolyboolPolygon);
-                    var comb = polyBool.combine(finalSegmentList, seg2);
-                    finalSegmentList = polyBool.selectDifference(comb);
+                    if (shape.booleanOperator == PolygonBooleanOperator.Union)
+                    {
+                        var seg2 = polyBool.segments(shapePolyboolPolygon);
+                        var comb = polyBool.combine(finalSegmentList, seg2);
+                        finalSegmentList = polyBool.selectUnion(comb);
+                    }
+                    else
+                    {
+                        var seg2 = polyBool.segments(shapePolyboolPolygon);
+                        var comb = polyBool.combine(finalSegmentList, seg2);
+                        finalSegmentList = polyBool.selectDifference(comb);
+                    }
                 }
             }
 
@@ -198,7 +202,39 @@ namespace AeternumGames.ShapeEditor
                 MarkHiddenSurfaces(convexPolygons);
             }
 
+            // cleanup step that removes degenerate polygons and polygons with less than 3 sides.
+            CleanupPolygons(convexPolygons);
+
             return convexPolygons;
+        }
+
+        /// <summary>
+        /// A cleanup step that removes degenerate polygons and polygons with less than 3 sides.
+        /// </summary>
+        /// <param name="convexPolygons">The collection of 2D polygons of <see cref="GenerateConvexPolygons"/></param>
+        private void CleanupPolygons(List<Polygon> convexPolygons)
+        {
+            // iterate over every 2d convex polygon:
+            var convexPolygonsCount = convexPolygons.Count;
+            for (int j = convexPolygonsCount; j-- > 0;)
+            {
+                var vertices = convexPolygons[j];
+                var vertexCount = vertices.Count;
+
+                // remove polygons with less than 3 sides.
+                if (vertexCount < 3)
+                {
+                    convexPolygons.RemoveAt(j);
+                    continue;
+                }
+
+                // remove degenerate polygons.
+                if (vertices.GetSignedArea2D() == 0f)
+                {
+                    convexPolygons.RemoveAt(j);
+                    continue;
+                }
+            }
         }
 
         /// <summary>
@@ -230,7 +266,7 @@ namespace AeternumGames.ShapeEditor
                         if (j == k) continue;
 
                         // check whether the other polygon contains the center point.
-                        if (convexPolygons[k].ContainsPoint2D(ref center) >= 0)
+                        if (convexPolygons[k].ContainsPoint2D(ref center, 0.00000001f) >= 0)
                         {
                             // mark the edge as hidden.
                             convexPolygons[j][i] = new Vertex(thisVertex.position, thisVertex.uv0, true);

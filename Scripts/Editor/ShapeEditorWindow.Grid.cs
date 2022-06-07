@@ -20,6 +20,8 @@ namespace AeternumGames.ShapeEditor
         internal static readonly Color segmentColorDifference = new Color(1.0f, 0.5f, 0.5f);
         internal static readonly Color segmentPivotSelectedColor = new Color(0.9f, 0.45f, 0.0f);
         internal static readonly Color segmentPivotOutlineColor = new Color(1.0f, 0.5f, 0.0f);
+        internal static readonly Color constraintGlobalXColor = new Color(1.000f, 0.486f, 0.549f);
+        internal static readonly Color constraintGlobalYColor = new Color(0.486f, 0.886f, 0.392f);
         private float2 gridOffset;
         internal float gridZoom = 1f;
         internal float gridSnap = 0.125f;
@@ -37,6 +39,18 @@ namespace AeternumGames.ShapeEditor
         /// Gets whether the user is currently snapping. Through settings or the control key.
         /// </summary>
         internal bool isSnapping => snapEnabled ? !isCtrlPressed : isCtrlPressed;
+
+        /// <summary>
+        /// The background image that will be displayed behind the grid when it is activated and
+        /// loaded by the user.
+        /// </summary>
+        internal Texture2D gridBackgroundImage;
+
+        /// <summary>The scale of the background image.</summary>
+        internal float gridBackgroundScale = 1f;
+
+        /// <summary>The alpha transparency of the background image.</summary>
+        internal float gridBackgroundAlpha = 0.25f;
 
         /// <summary>After rendering the pivots this variable holds the total number of segments.</summary>
         internal int totalSegmentsCount;
@@ -76,36 +90,82 @@ namespace AeternumGames.ShapeEditor
             return new float2(result.x, result.y);
         }
 
+        private void DrawBackground()
+        {
+            if (gridBackgroundImage == null || gridBackgroundScale == 0f || gridBackgroundAlpha == 0f) return;
+
+            var bounds = new float4(GridPointToScreen(new float2(-0.5f * gridBackgroundScale)), GridPointToScreen(new float2(0.5f * gridBackgroundScale)));
+            var boundsWidth = bounds.z - bounds.x;
+            var boundsHeight = bounds.w - bounds.y;
+
+            var ratio = math.min(1f / gridBackgroundImage.width, 1f / gridBackgroundImage.height);
+            var width = gridBackgroundImage.width * ratio * boundsWidth;
+            var height = gridBackgroundImage.height * ratio * boundsHeight;
+
+            GLUtilities.DrawGuiTextured(gridBackgroundImage, () =>
+            {
+                GLUtilities.DrawFlippedUvRectangle(bounds.x + (boundsWidth / 2f) - (width / 2f), bounds.y + (boundsHeight / 2f) - (height / 2f), width, height, new Color(1f, 1f, 1f, gridBackgroundAlpha));
+            });
+        }
+
         private void DrawGrid()
         {
-            var gridSnap_x4 = gridSnap * 4f;
+            if (gridSnap <= 0f) return; // prevent infinite loop.
+
+            // an adaptive grid that can be enlarged indefinitely. Lines that become too small are
+            // hidden at the right time, so that the outer lines become the inner ones again.
+
+            var modifiedGridSnap = gridSnap;
+            var screenPoint1 = GridPointToScreen(modifiedGridSnap);
+            var screenPoint2 = GridPointToScreen(modifiedGridSnap * 2f);
+            var factor = Mathf.Clamp01(Mathf.Round(screenPoint2.x - screenPoint1.x) / 8f);
+            while (factor <= 0.25f)
+            {
+                modifiedGridSnap *= 4f;
+
+                screenPoint1 = GridPointToScreen(modifiedGridSnap);
+                screenPoint2 = GridPointToScreen(modifiedGridSnap * 2f);
+                factor = Mathf.Clamp01(Mathf.Round(screenPoint2.x - screenPoint1.x) / 8f);
+            }
+
+            // an interpolant to determine when the next grid size has been reached. the zoom
+            // formula never gets to 0.25f so we switch to 0.0f earlier.
+            factor = Mathf.InverseLerp(0.35f, 1.0f, factor);
+
             var bounds = new float4(ScreenPointToGrid(new float2(0f, 0f)), ScreenPointToGrid(new float2(renderTextureWidth, renderTextureHeight)));
-            float x = bounds.x.Snap(gridSnap);
-            float y = bounds.y.Snap(gridSnap);
+            float x = bounds.x.Snap(modifiedGridSnap);
+            float y = bounds.y.Snap(modifiedGridSnap);
+            var gridSnap_x4 = modifiedGridSnap * 4f;
+            var gridSnap_x8 = modifiedGridSnap * 8f;
+
+            Color sectionLinesColor = Color.Lerp(gridSectionLinesColor, gridLinesColor, 1f - factor);
+            Color smallLinesColor = new Color(gridLinesColor.r, gridLinesColor.g, gridLinesColor.b, factor);
+            Color nextSectionLinesColor = Color.Lerp(gridSectionLinesColor, gridLinesColor, factor);
 
             GLUtilities.DrawGui(() =>
             {
-                if (gridSnap > 0f) // prevent infinite loops.
+                while (x < bounds.z)
                 {
-                    while (x < bounds.z)
-                    {
-                        GL.Color(math.fmod(x, gridSnap_x4) == 0f ? gridSectionLinesColor : gridLinesColor);
-                        GLUtilities.DrawLine(1.0f, GridPointToScreen(new float2(x, bounds.w)), GridPointToScreen(new float2(x, bounds.y)));
-                        x += gridSnap;
-                    }
+                    var mainColor = math.fmod(x, gridSnap_x4) == 0f ? sectionLinesColor : smallLinesColor;
+                    var nextColor = math.fmod(x, gridSnap_x8) == 0f ? nextSectionLinesColor : mainColor;
+                    mainColor = Color.Lerp(mainColor, nextColor, 0.5f);
 
-                    while (y < bounds.w)
-                    {
-                        GL.Color(math.fmod(y, gridSnap_x4) == 0f ? gridSectionLinesColor : gridLinesColor);
-                        GLUtilities.DrawLine(1.0f, GridPointToScreen(new float2(bounds.x, y)), GridPointToScreen(new float2(bounds.z, y)));
-                        y += gridSnap;
-                    }
+                    GLUtilities.DrawGridLine(GridPointToScreen(new float2(x, bounds.w)), GridPointToScreen(new float2(x, bounds.y)), mainColor);
+                    x += modifiedGridSnap;
                 }
 
-                GL.Color(gridCenterLineXColor);
-                GLUtilities.DrawLine(1.0f, GridPointToScreen(new float2(bounds.x, 0f)), GridPointToScreen(new float2(bounds.z, 0f)));
-                GL.Color(gridCenterLineYColor);
-                GLUtilities.DrawLine(1.0f, GridPointToScreen(new float2(0f, bounds.w)), GridPointToScreen(new float2(0f, bounds.y)));
+                while (y < bounds.w)
+                {
+                    var mainColor = math.fmod(y, gridSnap_x4) == 0f ? sectionLinesColor : smallLinesColor;
+                    var nextColor = math.fmod(y, gridSnap_x8) == 0f ? nextSectionLinesColor : mainColor;
+                    mainColor = Color.Lerp(mainColor, nextColor, 0.5f);
+
+                    GLUtilities.DrawGridLine(GridPointToScreen(new float2(bounds.x, y)), GridPointToScreen(new float2(bounds.z, y)), mainColor);
+                    y += modifiedGridSnap;
+                }
+
+                GLUtilities.DrawGridLine(GridPointToScreen(new float2(bounds.x, 0f)), GridPointToScreen(new float2(bounds.z, 0f)), gridCenterLineXColor);
+                GLUtilities.DrawGridLine(GridPointToScreen(new float2(0f, bounds.w)), GridPointToScreen(new float2(0f, bounds.y)), gridCenterLineYColor);
             });
         }
 
@@ -135,6 +195,8 @@ namespace AeternumGames.ShapeEditor
             totalSegmentsCount = 0;
             selectedSegmentsCount = 0;
             selectedSegmentsAveragePosition = float2.zero;
+            var previousGridPosition = new float2(float.NegativeInfinity);
+            List<float2> duplicateSegmentPositions = null;
 
             GLUtilities.DrawGui(() =>
             {
@@ -143,22 +205,37 @@ namespace AeternumGames.ShapeEditor
                 for (int i = 0; i < shapesCount; i++)
                 {
                     var shape = project.shapes[i];
+                    var segmentsCount = shape.segments.Count;
+
+                    // begin detecting duplicate segments from the last segment.
+                    if (segmentsCount > 0)
+                        previousGridPosition = shape.segments[0].previous.position;
 
                     // for every segment in the project:
-                    var segmentsCount = shape.segments.Count;
                     for (int j = 0; j < segmentsCount; j++)
                     {
                         // get the current segment and the next segment (wrapping around).
                         var segment = shape.segments[j];
 
-                        float2 pos = GridPointToScreen(segment.position);
-                        GLUtilities.DrawSolidRectangleWithOutline(pos.x - halfPivotScale, pos.y - halfPivotScale, pivotScale, pivotScale, segment.selected ? segmentPivotSelectedColor : Color.white, segment.selected ? segmentPivotOutlineColor : Color.black);
+                        float2 gridPosition = segment.position;
+                        float2 screenPosition = GridPointToScreen(gridPosition);
+                        GLUtilities.DrawSolidRectangleWithOutline(screenPosition.x - halfPivotScale, screenPosition.y - halfPivotScale, pivotScale, pivotScale, segment.selected ? segmentPivotSelectedColor : Color.white, segment.selected ? segmentPivotOutlineColor : Color.black);
+
+                        // detect duplicate segments at the same position as the last segment.
+                        if (gridPosition.Equals(previousGridPosition))
+                        {
+                            // only allocate a list when this condition occurs.
+                            if (duplicateSegmentPositions == null) duplicateSegmentPositions = new List<float2>();
+                            var normal = math.normalize(gridPosition - segment.previous.previous.position);
+                            duplicateSegmentPositions.Add(math.floor(screenPosition + normal * 10f));
+                        }
+                        previousGridPosition = gridPosition;
 
                         totalSegmentsCount++;
                         if (segment.selected)
                         {
                             selectedSegmentsCount++;
-                            selectedSegmentsAveragePosition += pos;
+                            selectedSegmentsAveragePosition += screenPosition;
                         }
 
                         // have the segment generator draw additional pivots.
@@ -166,6 +243,20 @@ namespace AeternumGames.ShapeEditor
                     }
                 }
             });
+
+            // draw warning icons at duplicate segments.
+            if (duplicateSegmentPositions != null)
+            {
+                GLUtilities.DrawGuiTextured(ShapeEditorResources.Instance.shapeEditorSegmentDuplicateWarning, () =>
+                {
+                    var duplicateSegmentPositionsCount = duplicateSegmentPositions.Count;
+                    for (int i = 0; i < duplicateSegmentPositionsCount; i++)
+                    {
+                        var duplicateSegmentPosition = duplicateSegmentPositions[i];
+                        GLUtilities.DrawFlippedUvRectangle(duplicateSegmentPosition.x - 4, duplicateSegmentPosition.y - 4, 7, 7);
+                    }
+                });
+            }
 
             if (selectedSegmentsCount != 0)
                 selectedSegmentsAveragePosition /= selectedSegmentsCount;
@@ -205,6 +296,7 @@ namespace AeternumGames.ShapeEditor
             GL.Clear(true, true, gridBackgroundColor);
             GL.PushMatrix();
             GL.LoadPixelMatrix(0f, renderTextureWidth, renderTextureHeight, 0f);
+            DrawBackground();
             DrawGrid();
             DrawSegments();
             DrawPivots();
@@ -409,6 +501,14 @@ namespace AeternumGames.ShapeEditor
                 foreach (var segment in shape.segments)
                     if (segment.selected && segment.next.selected)
                         yield return segment;
+        }
+
+        /// <summary>Iterates over all fully selected shapes.</summary>
+        internal IEnumerable<Shape> ForEachSelectedShape()
+        {
+            foreach (var shape in project.shapes)
+                if (shape.IsSelected())
+                    yield return shape;
         }
     }
 }

@@ -10,6 +10,8 @@ namespace AeternumGames.ShapeEditor
     {
         /// <summary>The icon to be displayed inside of the button.</summary>
         public Texture2D icon;
+        /// <summary>The text to be displayed inside of the button when the icon is not set.</summary>
+        public string text;
         /// <summary>The action to be called when the button is clicked.</summary>
         public System.Action onClick;
         /// <summary>Whether this button appears as being checked (background color).</summary>
@@ -26,17 +28,22 @@ namespace AeternumGames.ShapeEditor
 
         private bool isPressed;
 
-        public GuiButton(Texture2D icon, float2 position, float2 size, System.Action onClick) : base(position, size)
+        public GuiButton(Texture2D icon, string text, float2 position, float2 size, System.Action onClick) : base(position, size)
         {
             this.icon = icon;
+            this.text = text;
             this.onClick = onClick;
         }
 
-        public GuiButton(Texture2D icon, float2 size, System.Action onClick) : base(float2.zero, size)
-        {
-            this.icon = icon;
-            this.onClick = onClick;
-        }
+        public GuiButton(Texture2D icon, string text, float2 size, System.Action onClick) : this(icon, text, float2.zero, size, onClick) { }
+
+        public GuiButton(Texture2D icon, float2 position, float2 size, System.Action onClick) : this(icon, null, position, size, onClick) { }
+
+        public GuiButton(Texture2D icon, float2 size, System.Action onClick) : this(icon, null, float2.zero, size, onClick) { }
+
+        public GuiButton(string text, float2 position, float2 size, System.Action onClick) : this(null, text, position, size, onClick) { }
+
+        public GuiButton(string text, float2 size, System.Action onClick) : this(null, text, float2.zero, size, onClick) { }
 
         /// <summary>Called when the control is rendered.</summary>
         public override void OnRender()
@@ -56,11 +63,54 @@ namespace AeternumGames.ShapeEditor
                 GLUtilities.DrawTransparentRectangleWithOutline(drawPosition.x, drawPosition.y, size.x, size.y, backgroundColor, isActive ? colorButtonActiveBorder : colorButtonBorder);
             });
 
+            // draw the button content.
+            if (icon != null && text != null)
+            {
+                RenderButtonTextAndIcon();
+            }
+            else
+            {
+                if (icon == null)
+                {
+                    RenderButtonText();
+                }
+                else
+                {
+                    RenderButtonIcon();
+                }
+            }
+        }
+
+        /// <summary>Called when the button icon is rendered.</summary>
+        private void RenderButtonIcon()
+        {
             // draw the button icon.
             GLUtilities.DrawGuiTextured(icon, () =>
             {
                 GLUtilities.DrawFlippedUvRectangle(drawPosition.x + (size.x / 2f) - (icon.width / 2f), drawPosition.y + (size.y / 2f) - (icon.height / 2f), icon.width, icon.height);
             });
+        }
+
+        /// <summary>Called when the button text is rendered.</summary>
+        private void RenderButtonText()
+        {
+            var textStringWidth = ShapeEditorResources.fontSegoeUI14.StringWidth(text);
+
+            // draw the button text.
+            GLUtilities.DrawGuiText(ShapeEditorResources.fontSegoeUI14, text, math.floor(new float2(drawPosition.x + (size.x / 2f) - (textStringWidth / 2f), drawPosition.y + (size.y / 2f) - ShapeEditorResources.fontSegoeUI14.halfHeight)));
+        }
+
+        /// <summary>Called when the button icon and text are rendered.</summary>
+        private void RenderButtonTextAndIcon()
+        {
+            // draw the button icon.
+            GLUtilities.DrawGuiTextured(icon, () =>
+            {
+                GLUtilities.DrawFlippedUvRectangle(drawPosition.x + 1f, drawPosition.y + (size.y / 2f) - (icon.height / 2f), icon.width, icon.height);
+            });
+
+            // draw the button text.
+            GLUtilities.DrawGuiText(ShapeEditorResources.fontSegoeUI14, text, math.floor(new float2(drawPosition.x + icon.width + 2f, drawPosition.y + (size.y / 2f) - ShapeEditorResources.fontSegoeUI14.halfHeight)));
         }
 
         public override void OnMouseDown(int button)

@@ -14,14 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shapeEditorAbout: {fileID: 2800000, guid: 546586d856de70b4ebcdb76994f7e739, type: 3}
   shapeEditorAboutPatreon: {fileID: 2800000, guid: 17b6c9730b35ab24f9e388ab44ce96ef, type: 3}
-  shapeEditorCreatePolygon: {fileID: 2800000, guid: 2e7ea28a97ddc00478361b08f10aecc5, type: 3}
+  shapeEditorCreatePolygon: {fileID: 2800000, guid: e75ef525809c0e34cbfc71c8aae44202, type: 3}
   shapeEditorCut: {fileID: 2800000, guid: ba6aee88efca1344bacb0e0f82e2a395, type: 3}
   shapeEditorDelete: {fileID: 2800000, guid: 5efe46f796cdc1b438c1a2b21d3ea154, type: 3}
   shapeEditorEdgeSelect: {fileID: 2800000, guid: c837781f9e5f2c34a83aa4d169761d3b, type: 3}
-  shapeEditorExtrudeBevel: {fileID: 2800000, guid: 83f4159c0236d0e4a9c4615884a4c7f4, type: 3}
-  shapeEditorExtrudePoint: {fileID: 2800000, guid: 8d61963e1a756f748aac6c2d773ad121, type: 3}
-  shapeEditorExtrudeRevolve: {fileID: 2800000, guid: 9ce7aa50860214e4da8999216b99bb8a, type: 3}
-  shapeEditorExtrudeShape: {fileID: 2800000, guid: 857ef677c5d21454fb5587a2d5ec394f, type: 3}
+  shapeEditorExtrudeBevel: {fileID: 2800000, guid: bb52e962aebc2ed429c1e9376afb8cae, type: 3}
+  shapeEditorExtrudeCurvedStaircase: {fileID: 2800000, guid: 80c872aa6d963114ba18a6678ffb3ab8, type: 3}
+  shapeEditorExtrudeFixed: {fileID: 2800000, guid: 2f7e2003afe0d344d93399b3b8c9ef13, type: 3}
+  shapeEditorExtrudeLinearStaircase: {fileID: 2800000, guid: a4b4d41dd2eeda9488f83ef9413055dc, type: 3}
+  shapeEditorExtrudePoint: {fileID: 2800000, guid: 74376502bee3a6d49a8e538af3a9ec2d, type: 3}
+  shapeEditorExtrudeRevolve: {fileID: 2800000, guid: b6b91882ebb694048a551a127584fa06, type: 3}
+  shapeEditorExtrudeShape: {fileID: 2800000, guid: 91394dd74b9c8564ca1d1c914f2b18e8, type: 3}
+  shapeEditorExtrudeSlope: {fileID: 2800000, guid: 8fcabf11cc873da4ea3807c921f921b5, type: 3}
+  shapeEditorExtrudeSpiral: {fileID: 2800000, guid: dfbaf59f80008a84b96100fb089c7f5f, type: 3}
+  shapeEditorExtrudeSpline: {fileID: 2800000, guid: e862e09b866932041b196e70bf7ac225, type: 3}
   shapeEditorFaceSelect: {fileID: 2800000, guid: 70271061b970f6142bc1c570451d1331, type: 3}
   shapeEditorFlipHorizontally: {fileID: 2800000, guid: f3869c58b7571c04bb3d92c15d2b6881, type: 3}
   shapeEditorFlipVertically: {fileID: 2800000, guid: 620c7febb2a0936488a0f70141a5ecb8, type: 3}
@@ -40,6 +46,7 @@ MonoBehaviour:
   shapeEditorSegmentApply: {fileID: 2800000, guid: 2e6c111fa0c51b047b2e08c09ca7db4b, type: 3}
   shapeEditorSegmentBezier: {fileID: 2800000, guid: 8edcf55907a9330459e010614fb83a5c, type: 3}
   shapeEditorSegmentBezierDetail: {fileID: 2800000, guid: 71ed1a9056d0c5a488787b5de3727ec4, type: 3}
+  shapeEditorSegmentDuplicateWarning: {fileID: 2800000, guid: 8f9116e77a430714383a3c4aec898a99, type: 3}
   shapeEditorSegmentExtrude: {fileID: 2800000, guid: 46170e4cb750c394e9358362c37029db, type: 3}
   shapeEditorSegmentInsert: {fileID: 2800000, guid: c224c044a8d3ae84699909162c1c4362, type: 3}
   shapeEditorSegmentLinear: {fileID: 2800000, guid: 573428ea1bb74f745b055651c14dfa93, type: 3}
@@ -57,5 +64,4 @@ MonoBehaviour:
   shapeEditorFontSegoeUI14Xml: {fileID: 4900000, guid: 96c44120173bdb24081e0676c015daee, type: 3}
   shapeEditorFontSegoeUI14: {fileID: 2800000, guid: 4c29aef198600c443825fa46c0b76761, type: 3}
   shapeEditorDefaultMaterial: {fileID: 2100000, guid: 10af3fe77d7a84a4d951b38b54533f7a, type: 2}
-  shapeEditorGridMaterial: {fileID: 2100000, guid: 021e83c5ba89e754d8fb2194fde8819e, type: 2}
   shapeEditorGuiMaterial: {fileID: 2100000, guid: d1dffd627a249ca498ba91dd9d46daf2, type: 2}
