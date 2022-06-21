@@ -6,38 +6,31 @@ namespace AeternumGames.ShapeEditor
 {
     public partial class RealtimeCSGTarget
     {
-        // revolves the shape around the center.
         [SerializeField]
         [Min(1)]
-        internal int revolveExtrudePrecision = 8;
+        internal int revolveChoppedPrecision = 8;
 
         [SerializeField]
         [Range(-360f, 360.0f)]
-        internal float revolveExtrudeDegrees = 90f;
+        internal float revolveChoppedDegrees = 90f;
 
         [SerializeField]
-        [Min(0f)]
-        internal float revolveExtrudeRadius = 2f;
+        [Min(MathEx.EPSILON_3)]
+        internal float revolveChoppedDistance = 0.25f;
 
-        [SerializeField]
-        internal float revolveExtrudeHeight = 0f;
-
-        [SerializeField]
-        internal bool revolveExtrudeSloped = false;
-
-        private void RevolveExtrude_Rebuild()
+        private void RevolveChopped_Rebuild()
         {
-            RequireConvexPolygons2D();
+            RequireChoppedPolygons2D(revolveChoppedPrecision);
 
             // clamp the degrees to be at least between -0.1f and 0.1f but never 0.0f.
-            if (revolveExtrudeDegrees >= 0.0f && revolveExtrudeDegrees < 0.1f)
-                revolveExtrudeDegrees = 0.1f;
-            else if (revolveExtrudeDegrees < 0.0f && revolveExtrudeDegrees > -0.1f)
-                revolveExtrudeDegrees = -0.1f;
+            if (revolveChoppedDegrees >= 0.0f && revolveChoppedDegrees < 0.1f)
+                revolveChoppedDegrees = 0.1f;
+            else if (revolveChoppedDegrees < 0.0f && revolveChoppedDegrees > -0.1f)
+                revolveChoppedDegrees = -0.1f;
 
             var parent = CleanAndGetBrushParent();
 
-            var polygonMeshes = MeshGenerator.CreateRevolveExtrudedPolygonMeshes(convexPolygons2D, revolveExtrudePrecision, revolveExtrudeDegrees, revolveExtrudeRadius, revolveExtrudeHeight, revolveExtrudeSloped);
+            var polygonMeshes = MeshGenerator.CreateRevolveChoppedMeshes(choppedPolygons2D, revolveChoppedDegrees, revolveChoppedDistance);
             var polygonMeshesCount = polygonMeshes.Count;
             for (int i = 0; i < polygonMeshesCount; i++)
             {

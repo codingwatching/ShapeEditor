@@ -222,9 +222,16 @@ namespace AeternumGames.ShapeEditor
         /// <param name="degrees">The revolve degrees between -360 to 360.</param>
         /// <param name="diameter">The inner diameter to revolve around.</param>
         /// <param name="height">The target height to be reached by offsetting the individual meshes.</param>
-        public static List<PolygonMesh> CreateRevolveExtrudedPolygonMeshes(PolygonMesh convexPolygons, int precision, float degrees, float diameter, float height)
+        public static List<PolygonMesh> CreateRevolveExtrudedPolygonMeshes(PolygonMesh convexPolygons, int precision, float degrees, float diameter, float height, bool sloped)
         {
             var polygonMeshes = new List<PolygonMesh>();
+
+            var slopedHeightOffset = new Vector3();
+            if (sloped && precision >= 2)
+                slopedHeightOffset = new Vector3(0.0f, height / precision, 0.0f);
+
+            // the ending height has to be reduced so that it aligns perfectly with the non-sloped version.
+            height -= slopedHeightOffset.y;
 
             // offset the polygons by the the vertical project center line as this will let us
             // rotate left or right without self-intersecting or inverting the mesh.
@@ -264,7 +271,7 @@ namespace AeternumGames.ShapeEditor
                             heightOffset.y = (j / ((float)precision - 1)) * height;
 
                         poly[v] = new Vertex(heightOffset + MathEx.RotatePointAroundPivot(poly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, j / (float)precision), 0.0f)), poly[v].uv0);
-                        nextPoly[v] = new Vertex(heightOffset + MathEx.RotatePointAroundPivot(nextPoly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, (j + 1) / (float)precision), 0.0f)), nextPoly[v].uv0);
+                        nextPoly[v] = new Vertex(heightOffset + slopedHeightOffset + MathEx.RotatePointAroundPivot(nextPoly[v].position, pivot, new Vector3(0.0f, Mathf.Lerp(0f, degrees, (j + 1) / (float)precision), 0.0f)), nextPoly[v].uv0);
                     }
 
                     brush.Add(poly);
@@ -281,20 +288,28 @@ namespace AeternumGames.ShapeEditor
                             poly[k + 1],
                         });
 
-                        // (RealtimeCSG doesn't need this) extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
-                        brush.Add(extrudedPolygon);
+                        // split non-planar polygons for slopes to prevent cracking quads.
+                        if (height != 0f && sloped && extrudedPolygon.SplitNonPlanar4(out var planarPolygons))
+                            brush.AddRange(planarPolygons);
+                        else
+                            brush.Add(extrudedPolygon);
                     }
 
                     // one more face that wraps around to index 0.
-                    extrudedPolygon = new Polygon(new Vertex[] {
-                        poly[polyVertexCount - 1],
-                        nextPoly[polyVertexCount - 1],
-                        nextPoly[0],
-                        poly[0],
-                    });
+                    {
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[polyVertexCount - 1],
+                            nextPoly[polyVertexCount - 1],
+                            nextPoly[0],
+                            poly[0],
+                        });
 
-                    // (RealtimeCSG doesn't need this) extrudedPolygon.ApplyPositionBasedUV0(new Vector2(0.5f, 0.5f));
-                    brush.Add(extrudedPolygon);
+                        // split non-planar polygons for slopes to prevent cracking quads.
+                        if (height != 0f && sloped && extrudedPolygon.SplitNonPlanar4(out var planarPolygons))
+                            brush.AddRange(planarPolygons);
+                        else
+                            brush.Add(extrudedPolygon);
+                    }
 
                     // undo the polygon translation ensuring they were always on one side of the center line.
                     brush.Translate(-projectCenterOffset);
@@ -745,6 +760,144 @@ namespace AeternumGames.ShapeEditor
             return mesh;
         }
 
+        /// <summary>[Convex] Creates a mesh by revolving chopped convex polygons along a circle.</summary>
+        /// <param name="convexPolygons">The chopped and decomposed convex polygons.</param>
+        /// <param name="degrees">The revolve degrees between -360 to 360.</param>
+        /// <param name="distance">The distance to extrude by.</param>
+        public static List<PolygonMesh> CreateRevolveChoppedMeshes(PolygonMeshes choppedPolygons, float degrees, float distance)
+        {
+            int precision = choppedPolygons.Count;
+            var polygonMeshes = new List<PolygonMesh>(precision);
+
+            Bounds projectBounds = choppedPolygons.bounds2D;
+
+            // offset the polygons by the the vertical project center line as this will let us
+            // rotate left or right without self-intersecting or inverting the mesh.
+            var projectCenterOffset = new Vector3(projectBounds.min.x, 0f, 0f);
+
+            var innerCircle = MathEx.Circle.GetCircleThatFitsCircumference(projectBounds.size.x * Mathf.Sign(degrees), Mathf.Abs(degrees) / 360f);
+            var outerCircle = new MathEx.Circle(innerCircle.radius + distance * Mathf.Sign(degrees));
+
+            // iterate over all chops in the project:
+            for (int i = 0; i < precision; i++)
+            {
+                var convexPolygons = choppedPolygons[i];
+                var convexPolygonsCount = convexPolygons.Count;
+
+                var stepLength = projectBounds.size.x / precision;
+
+                float s1 = i * stepLength;
+                float s2 = (i + 1) * stepLength;
+                float t1 = s1 / innerCircle.circumference;
+                float t2 = s2 / innerCircle.circumference;
+
+                var innerCirclepos1 = innerCircle.GetCirclePosition(t1) + projectCenterOffset;
+                var innerCirclepos2 = innerCircle.GetCirclePosition(t2) + projectCenterOffset;
+                var outerCirclepos1 = outerCircle.GetCirclePosition(t1) + projectCenterOffset;
+                var outerCirclepos2 = outerCircle.GetCirclePosition(t2) + projectCenterOffset;
+
+                // iterate over all decomposed convex polygons of the chop:
+                for (int j = 0; j < convexPolygonsCount; j++)
+                {
+                    var poly = new Polygon(convexPolygons[j]);
+
+                    // create a new polygon mesh for the front polygon.
+                    var brush = new PolygonMesh();
+                    polygonMeshes.Add(brush);
+
+                    // copy the boolean operator of the 2D polygon into the polygon mesh.
+                    brush.booleanOperator = convexPolygons[j].booleanOperator;
+
+                    // ensure that the polygon is always on one side of the vertical project center line.
+                    poly.Translate(-projectCenterOffset);
+
+                    var backPoly = new Polygon(convexPolygons[j]);
+                    var polyCount = poly.Count;
+
+                    // iterate over all cloned vertices:
+                    for (int v = 0; v < polyCount; v++)
+                    {
+                        var vertex = poly[v];
+
+                        var innerVertexPos = Vector3.Lerp(
+                            new Vector3(innerCirclepos1.x, vertex.position.y, innerCirclepos1.z),
+                            new Vector3(innerCirclepos2.x, vertex.position.y, innerCirclepos2.z),
+                            Mathf.InverseLerp(s1, s2, vertex.position.x)
+                        );
+
+                        var outerVertexPos = Vector3.Lerp(
+                            new Vector3(outerCirclepos1.x, vertex.position.y, outerCirclepos1.z),
+                            new Vector3(outerCirclepos2.x, vertex.position.y, outerCirclepos2.z),
+                            Mathf.InverseLerp(s1, s2, vertex.position.x)
+                        );
+
+                        innerVertexPos.z -= innerCircle.radius;
+                        outerVertexPos.z -= innerCircle.radius;
+
+                        if (degrees < 0f)
+                        {
+                            innerVertexPos.z += distance;
+                            outerVertexPos.z += distance;
+                        }
+
+                        poly[v] = new Vertex(innerVertexPos, poly[v].uv0, poly[v].hidden);
+                        backPoly[v] = new Vertex(outerVertexPos, poly[v].uv0, poly[v].hidden);
+                    }
+
+                    if (degrees < 0f)
+                    {
+                        brush.Add(poly.flipped);
+                        brush.Add(backPoly);
+                    }
+                    else
+                    {
+                        brush.Add(poly);
+                        brush.Add(backPoly.flipped);
+                    }
+
+                    // fill the gap with quads "extruding" the shape.
+                    Polygon extrudedPolygon;
+                    for (int k = 0; k < polyCount - 1; k++)
+                    {
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[k],
+                            backPoly[k],
+                            backPoly[k + 1],
+                            poly[k + 1],
+                        });
+
+                        if (degrees < 0)
+                            extrudedPolygon = extrudedPolygon.flipped;
+
+                        if (extrudedPolygon.SplitNonPlanar4(out var planarPolygons))
+                            brush.AddRange(planarPolygons);
+                        else
+                            brush.Add(extrudedPolygon);
+                    }
+
+                    // one more face that wraps around to index 0.
+                    {
+                        extrudedPolygon = new Polygon(new Vertex[] {
+                            poly[polyCount - 1],
+                            backPoly[polyCount - 1],
+                            backPoly[0],
+                            poly[0],
+                        });
+
+                        if (degrees < 0)
+                            extrudedPolygon = extrudedPolygon.flipped;
+
+                        if (extrudedPolygon.SplitNonPlanar4(out var planarPolygons))
+                            brush.AddRange(planarPolygons);
+                        else
+                            brush.Add(extrudedPolygon);
+                    }
+                }
+            }
+
+            return polygonMeshes;
+        }
+
         /// <summary>[Concave] Creates a mesh by revolving chopped convex polygons along a circle.</summary>
         /// <param name="convexPolygons">The chopped and decomposed convex polygons.</param>
         /// <param name="degrees">The revolve degrees between -360 to 360.</param>
@@ -766,16 +919,26 @@ namespace AeternumGames.ShapeEditor
             // iterate over all chops in the project:
             for (int i = 0; i < precision; i++)
             {
-                var original = choppedPolygons[i];
-                var originalCount = original.Count;
-                var brush = new PolygonMesh(originalCount);
+                var convexPolygons = choppedPolygons[i];
+                var convexPolygonsCount = convexPolygons.Count;
+                var brush = new PolygonMesh(convexPolygonsCount);
 
                 var stepLength = projectBounds.size.x / precision;
 
+                float s1 = i * stepLength;
+                float s2 = (i + 1) * stepLength;
+                float t1 = s1 / innerCircle.circumference;
+                float t2 = s2 / innerCircle.circumference;
+
+                var innerCirclepos1 = innerCircle.GetCirclePosition(t1) + projectCenterOffset;
+                var innerCirclepos2 = innerCircle.GetCirclePosition(t2) + projectCenterOffset;
+                var outerCirclepos1 = outerCircle.GetCirclePosition(t1) + projectCenterOffset;
+                var outerCirclepos2 = outerCircle.GetCirclePosition(t2) + projectCenterOffset;
+
                 // iterate over all decomposed convex polygons of the chop:
-                for (int j = 0; j < originalCount; j++)
+                for (int j = 0; j < convexPolygonsCount; j++)
                 {
-                    var poly = new Polygon(original[j]);
+                    var poly = new Polygon(convexPolygons[j]);
 
                     // calculate 2D UV coordinates for the front polygon.
                     poly.ApplyXYBasedUV0(new Vector2(0.5f, 0.5f));
@@ -783,23 +946,13 @@ namespace AeternumGames.ShapeEditor
                     // ensure that the polygon is always on one side of the vertical project center line.
                     poly.Translate(-projectCenterOffset);
 
-                    var backPoly = new Polygon(original[j]);
+                    var backPoly = new Polygon(convexPolygons[j]);
                     var polyCount = poly.Count;
 
                     // iterate over all cloned vertices:
                     for (int v = 0; v < polyCount; v++)
                     {
                         var vertex = poly[v];
-
-                        float s1 = i * stepLength;
-                        float s2 = (i + 1) * stepLength;
-                        float t1 = s1 / innerCircle.circumference;
-                        float t2 = s2 / innerCircle.circumference;
-
-                        var innerCirclepos1 = innerCircle.GetCirclePosition(t1) + projectCenterOffset;
-                        var innerCirclepos2 = innerCircle.GetCirclePosition(t2) + projectCenterOffset;
-                        var outerCirclepos1 = outerCircle.GetCirclePosition(t1) + projectCenterOffset;
-                        var outerCirclepos2 = outerCircle.GetCirclePosition(t2) + projectCenterOffset;
 
                         var innerVertexPos = Vector3.Lerp(
                             new Vector3(innerCirclepos1.x, vertex.position.y, innerCirclepos1.z),

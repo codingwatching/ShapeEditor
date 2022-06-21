@@ -18,6 +18,7 @@ namespace AeternumGames.ShapeEditor
         private SerializedProperty spRevolveExtrudeDegrees => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudeDegrees));
         private SerializedProperty spRevolveExtrudeRadius => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudeRadius));
         private SerializedProperty spRevolveExtrudeHeight => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudeHeight));
+        private SerializedProperty spRevolveExtrudeSloped => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveExtrudeSloped));
         private SerializedProperty spLinearStaircasePrecision => serializedObject.FindProperty(nameof(RealtimeCSGTarget.linearStaircasePrecision));
         private SerializedProperty spLinearStaircaseDistance => serializedObject.FindProperty(nameof(RealtimeCSGTarget.linearStaircaseDistance));
         private SerializedProperty spLinearStaircaseHeight => serializedObject.FindProperty(nameof(RealtimeCSGTarget.linearStaircaseHeight));
@@ -26,6 +27,9 @@ namespace AeternumGames.ShapeEditor
         private SerializedProperty spScaledExtrudeFrontScale => serializedObject.FindProperty(nameof(RealtimeCSGTarget.scaledExtrudeFrontScale));
         private SerializedProperty spScaledExtrudeBackScale => serializedObject.FindProperty(nameof(RealtimeCSGTarget.scaledExtrudeBackScale));
         private SerializedProperty spScaledExtrudeOffset => serializedObject.FindProperty(nameof(RealtimeCSGTarget.scaledExtrudeOffset));
+        private SerializedProperty spRevolveChoppedPrecision => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveChoppedPrecision));
+        private SerializedProperty spRevolveChoppedDegrees => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveChoppedDegrees));
+        private SerializedProperty spRevolveChoppedDistance => serializedObject.FindProperty(nameof(RealtimeCSGTarget.revolveChoppedDistance));
 
         public override void OnInspectorGUI()
         {
@@ -58,6 +62,10 @@ namespace AeternumGames.ShapeEditor
                 case RealtimeCSGTargetMode.ScaledExtrude:
                     ScaledExtrude_OnGUI();
                     break;
+
+                case RealtimeCSGTargetMode.RevolveChopped:
+                    RevolveChopped_OnGUI();
+                    break;
             }
 
             if (serializedObject.ApplyModifiedProperties() || rebuild)
@@ -81,7 +89,8 @@ namespace AeternumGames.ShapeEditor
             EditorGUILayout.PropertyField(spRevolveExtrudePrecision, new GUIContent("Precision"));
             EditorGUILayout.PropertyField(spRevolveExtrudeDegrees, new GUIContent("Degrees"));
             EditorGUILayout.PropertyField(spRevolveExtrudeRadius, new GUIContent("Radius"));
-            EditorGUILayout.PropertyField(spRevolveExtrudeHeight, new GUIContent("Target Height"));
+            EditorGUILayout.PropertyField(spRevolveExtrudeHeight, new GUIContent("Spiral Height"));
+            EditorGUILayout.PropertyField(spRevolveExtrudeSloped, new GUIContent("Spiral Sloped"));
         }
 
         private void LinearStaircase_OnGUI()
@@ -104,6 +113,13 @@ namespace AeternumGames.ShapeEditor
             EditorGUIUtility.wideMode = true;
             EditorGUILayout.PropertyField(spScaledExtrudeOffset, new GUIContent("Back Offset"));
             EditorGUIUtility.wideMode = false;
+        }
+
+        private void RevolveChopped_OnGUI()
+        {
+            EditorGUILayout.PropertyField(spRevolveChoppedPrecision, new GUIContent("Precision"));
+            EditorGUILayout.PropertyField(spRevolveChoppedDegrees, new GUIContent("Degrees"));
+            EditorGUILayout.PropertyField(spRevolveChoppedDistance, new GUIContent("Distance"));
         }
 
         private void ShapeEditorMenu_OnGUI()
