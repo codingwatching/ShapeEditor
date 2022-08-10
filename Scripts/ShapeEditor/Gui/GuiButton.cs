@@ -48,6 +48,10 @@ namespace AeternumGames.ShapeEditor
         /// <summary>Called when the control is rendered.</summary>
         public override void OnRender()
         {
+            // set the tooltip text when hovering over this control.
+            if (isMouseHoverEffectApplicable)
+                editor.SetTooltipText(onClick);
+
             // draw the button outline.
             GLUtilities.DrawGui(() =>
             {

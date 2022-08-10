@@ -43,6 +43,10 @@ namespace AeternumGames.ShapeEditor
             meshFilter.sharedMesh = mesh;
             if (!meshRenderer.sharedMaterial)
                 meshRenderer.sharedMaterial = ShapeEditorResources.Instance.shapeEditorDefaultMaterial;
+
+            // ensure that user-defined mesh colliders are updated.
+            if (TryGetComponent<MeshCollider>(out var meshCollider))
+                meshCollider.sharedMesh = mesh;
         }
 
         /// <summary>Must be called when <see cref="convexPolygons2D"/> is required.</summary>
@@ -76,6 +80,14 @@ namespace AeternumGames.ShapeEditor
 
         public void Rebuild()
         {
+            // unity editor will serialize private fields and restore them upon redo.
+            if (Event.current.HasPerformedUndoRedo())
+            {
+                project.Invalidate();
+                convexPolygons2D = null;
+                choppedPolygons2D = null;
+            }
+
             switch (targetMode)
             {
                 case ShapeEditorTargetMode.Polygon:

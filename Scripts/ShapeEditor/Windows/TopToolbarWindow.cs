@@ -44,6 +44,9 @@ namespace AeternumGames.ShapeEditor
             editMenu.Add("Invert Selection", editor.UserInvertSelection);
             editMenu.Add("Delete Selection", resources.shapeEditorDelete, editor.UserDeleteSelection);
             editMenu.Separator();
+            editMenu.Add("Copy", editor.UserCopy);
+            editMenu.Add("Paste", editor.UserPaste);
+            editMenu.Separator();
             editMenu.Add("Flip Horizontally", resources.shapeEditorFlipHorizontally, editor.UserFlipSelectionHorizonally);
             editMenu.Add("Flip Vertically", resources.shapeEditorFlipVertically, editor.UserFlipSelectionVertically);
             editMenu.Separator();
@@ -51,9 +54,11 @@ namespace AeternumGames.ShapeEditor
 
             var edgeMenu = menu.Add("Edge");
             edgeMenu.Add("Reset Edge To Linear", resources.shapeEditorSegmentLinear, editor.UserResetSegmentGeneratorForSelectedEdges);
+            edgeMenu.Separator();
+            edgeMenu.Add("Toggle Arch Generator", resources.shapeEditorSegmentArch, editor.UserToggleArchSegmentGeneratorForSelectedEdges);
             edgeMenu.Add("Toggle Bezier Generator", resources.shapeEditorSegmentBezier, editor.UserToggleBezierSegmentGeneratorForSelectedEdges);
-            edgeMenu.Add("Toggle Sine Generator", resources.shapeEditorSegmentSine, editor.UserToggleSineSegmentGeneratorForSelectedEdges);
             edgeMenu.Add("Toggle Repeat Generator", resources.shapeEditorSegmentRepeat, editor.UserToggleRepeatSegmentGeneratorForSelectedEdges);
+            edgeMenu.Add("Toggle Sine Generator", resources.shapeEditorSegmentSine, editor.UserToggleSineSegmentGeneratorForSelectedEdges);
             edgeMenu.Separator();
             edgeMenu.Add("Apply Selected Generators", resources.shapeEditorSegmentApply, editor.UserApplyGeneratorForSelectedEdges);
 
@@ -126,7 +131,9 @@ namespace AeternumGames.ShapeEditor
             var viewMenu = menu.Add("View");
             viewMenu.Add("Background Settings", editor.UserShowBackgroundSettingsWindow);
             viewMenu.Separator();
+            viewMenu.Add("Arch Inspector", resources.shapeEditorSegmentArch, editor.UserShowArchInspectorWindow);
             viewMenu.Add("Bezier Inspector", resources.shapeEditorSegmentBezier, editor.UserShowBezierInspectorWindow);
+            viewMenu.Add("Repeat Inspector", resources.shapeEditorSegmentRepeat, editor.UserShowRepeatInspectorWindow);
             viewMenu.Add("Shape Inspector", resources.shapeEditorShapeCreate, editor.UserShowShapeInspectorWindow);
             viewMenu.Add("Sine Inspector", resources.shapeEditorSegmentSine, editor.UserShowSineInspectorWindow);
             viewMenu.Separator();
@@ -152,6 +159,7 @@ namespace AeternumGames.ShapeEditor
             horizontalLayout.Add(new GuiButton(resources.shapeEditorSegmentBezier, 20, editor.UserToggleBezierSegmentGeneratorForSelectedEdges));
             horizontalLayout.Add(new GuiButton(resources.shapeEditorSegmentSine, 20, editor.UserToggleSineSegmentGeneratorForSelectedEdges));
             horizontalLayout.Add(new GuiButton(resources.shapeEditorSegmentRepeat, 20, editor.UserToggleRepeatSegmentGeneratorForSelectedEdges));
+            horizontalLayout.Add(new GuiButton(resources.shapeEditorSegmentArch, 20, editor.UserToggleArchSegmentGeneratorForSelectedEdges));
             horizontalLayout.Space(5);
             horizontalLayout.Add(new GuiButton(resources.shapeEditorShapeCreate, 20, editor.UserAddShapeToProject));
             horizontalLayout.Space(5);

@@ -341,6 +341,10 @@ namespace AeternumGames.ShapeEditor
                             UserSwitchToTranslateTool();
                             return true;
 
+                        case KeyCode.X:
+                            UserDeleteSelection();
+                            return true;
+
                         case KeyCode.Y:
                             if (hasFocus && isCtrlPressed)
                             {

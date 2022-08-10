@@ -1,6 +1,8 @@
 ﻿#if UNITY_EDITOR
 
+using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -74,6 +76,79 @@ namespace AeternumGames.ShapeEditor
             {
                 transform.SetSiblingIndex(parent.GetSiblingIndex() + 1);
             }
+        }
+
+        /// <summary>Whether the event is the "UndoRedoPerformed" command.</summary>
+        public static bool HasPerformedUndoRedo(this Event current)
+        {
+            if (current == null) return false;
+            return (current.type == EventType.ValidateCommand || current.type == EventType.ExecuteCommand) && current.commandName == "UndoRedoPerformed";
+        }
+
+        /// <summary>
+        /// Gets a method by name in a type that matches all of the parameter names.
+        /// </summary>
+        /// <param name="type">The type to search inside of.</param>
+        /// <param name="name">The name of the method.</param>
+        /// <param name="parameterNames">The parameter names to match.</param>
+        /// <returns>Returns the method or null if not found.</returns>
+        public static MethodInfo GetMethodByName(this Type type, string name, params string[] parameterNames)
+        {
+            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))
+            {
+                // method names must match.
+                if (method.Name != name) continue;
+
+                // the amount of parameters must match.
+                var parameters = method.GetParameters();
+                if (parameters.Length != parameterNames.Length) continue;
+
+                // the individual parameter names must match.
+                for (int i = 0; i < parameters.Length; i++)
+                    if (parameters[i].Name != parameterNames[i]) continue;
+
+                return method;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Retrieves the <see cref="InstructionsAttribute"/> associated with this action or null.
+        /// </summary>
+        public static InstructionsAttribute GetInstructions(this Action action) => action.Method.GetInstructions();
+
+        /// <summary>
+        /// Retrieves the <see cref="InstructionsAttribute"/> associated with this method or null.
+        /// </summary>
+        public static InstructionsAttribute GetInstructions(this MethodBase method) => method.GetCustomAttribute<InstructionsAttribute>();
+
+        /// <summary>The cached show tooltip method after initialization.</summary>
+        private static MethodInfo showTooltipMethod = null;
+
+        /// <summary>
+        /// Calls the internal <see cref="EditorWindow.ShowTooltip"/> function that creates a
+        /// borderless window without taking input focus.
+        /// </summary>
+        public static void ShowTooltip(this EditorWindow window)
+        {
+            if (showTooltipMethod == null)
+                showTooltipMethod = typeof(EditorWindow).GetMethodByName("ShowTooltip");
+            showTooltipMethod.Invoke(window, null);
+        }
+
+        /// <summary>The cached get current mouse position method after initialization.</summary>
+        private static MethodInfo getCurrentMousePositionMethod = null;
+
+        /// <summary>
+        /// Calls the internal <see cref="Editor.GetCurrentMousePosition"/> function that returns
+        /// the actual mouse coordinates of the operating system.
+        /// </summary>
+        public static Vector2 GetCurrentMousePosition()
+        {
+            if (getCurrentMousePositionMethod == null)
+                getCurrentMousePositionMethod = typeof(Editor).GetMethodByName("GetCurrentMousePosition");
+            return (Vector2)getCurrentMousePositionMethod.Invoke(null, null);
         }
     }
 }
