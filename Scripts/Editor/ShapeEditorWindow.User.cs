@@ -426,19 +426,29 @@ namespace AeternumGames.ShapeEditor
         /// </summary>
         [Instructions(
             title: "Flip selection horizontally",
-            description: "Flips the selection horizontally against the leftmost position of all selected elements."
+            description: "Flips the selection horizontally against the leftmost position of all selected elements.",
+            shortcut: "Shift + H"
         )]
         internal void UserFlipSelectionHorizonally()
         {
             RegisterUndo("Flip Selection Horizonally");
 
             var left = float.MaxValue;
-            foreach (var segment in ForEachSelectedObject())
-                if (segment.position.x < left)
-                    left = segment.position.x;
+            var right = float.MinValue;
+            foreach (var selectable in ForEachSelectedObject())
+            {
+                if (selectable.position.x < left)
+                    left = selectable.position.x;
+                if (selectable.position.x > right)
+                    right = selectable.position.x;
+            }
 
-            foreach (var segment in ForEachSelectedObject())
-                segment.position = new float2(-segment.position.x + (left * 2), segment.position.y);
+            foreach (var selectable in ForEachSelectedObject())
+            {
+                selectable.position = new float2(-selectable.position.x + left + right, selectable.position.y);
+                if (selectable is Segment segment && segment.next.selected)
+                    segment.generator.FlipDirection();
+            }
         }
 
         /// <summary>
@@ -446,19 +456,29 @@ namespace AeternumGames.ShapeEditor
         /// </summary>
         [Instructions(
             title: "Flip selection vertically",
-            description: "Flips the selection vertically against the topmost position of all selected elements."
+            description: "Flips the selection vertically against the topmost position of all selected elements.",
+            shortcut: "Shift + V"
         )]
         internal void UserFlipSelectionVertically()
         {
             RegisterUndo("Flip Selection Vertically");
 
             var top = float.MaxValue;
-            foreach (var segment in ForEachSelectedObject())
-                if (segment.position.y < top)
-                    top = segment.position.y;
+            var bottom = float.MinValue;
+            foreach (var selectable in ForEachSelectedObject())
+            {
+                if (selectable.position.y < top)
+                    top = selectable.position.y;
+                if (selectable.position.y > bottom)
+                    bottom = selectable.position.y;
+            }
 
-            foreach (var segment in ForEachSelectedObject())
-                segment.position = new float2(segment.position.x, -segment.position.y + (top * 2));
+            foreach (var selectable in ForEachSelectedObject())
+            {
+                selectable.position = new float2(selectable.position.x, -selectable.position.y + top + bottom);
+                if (selectable is Segment segment && segment.next.selected)
+                    segment.generator.FlipDirection();
+            }
         }
 
         /// <summary>Inverts the selection all of the selectable objects in the project.</summary>
@@ -720,6 +740,16 @@ namespace AeternumGames.ShapeEditor
         internal void UserShowBezierInspectorWindow()
         {
             OpenWindow(new BezierInspectorWindow());
+        }
+
+        /// <summary>Displays the circle generator window.</summary>
+        [Instructions(
+            title: "Circle generator",
+            description: "Displays the circle generator window. Provides the ability to create circular shapes."
+        )]
+        internal void UserShowCircleGeneratorWindow()
+        {
+            OpenWindow(new CircleGeneratorWindow());
         }
 
         /// <summary>Displays the repeat inspector window.</summary>

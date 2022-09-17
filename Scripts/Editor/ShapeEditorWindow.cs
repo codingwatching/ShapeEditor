@@ -296,7 +296,15 @@ namespace AeternumGames.ShapeEditor
                             return false;
 
                         case KeyCode.H:
-                            UserResetCamera();
+                            if (isShiftPressed)
+                            {
+                                UserFlipSelectionHorizonally();
+                                return true;
+                            }
+                            else
+                            {
+                                UserResetCamera();
+                            }
                             return true;
 
                         case KeyCode.I:
@@ -333,6 +341,11 @@ namespace AeternumGames.ShapeEditor
                             if (isCtrlPressed)
                             {
                                 UserPaste();
+                                return true;
+                            }
+                            else if (isShiftPressed)
+                            {
+                                UserFlipSelectionVertically();
                                 return true;
                             }
                             return false;
@@ -396,6 +409,24 @@ namespace AeternumGames.ShapeEditor
             }
 
             return false;
+        }
+
+        private void OnWindowResize(float2 lastWindowSize, float2 screenDelta)
+        {
+            // keep the camera centered by panning the viewport the correct amount to counteract resizing.
+            gridOffset += screenDelta * 0.5f;
+        }
+
+        private void OnDragDrop(string path)
+        {
+            if (FileEx.IsJsonFile(path))
+            {
+                OpenProject(path);
+            }
+            else
+            {
+                gridBackgroundImage = FileEx.LoadImage(path);
+            }
         }
     }
 }

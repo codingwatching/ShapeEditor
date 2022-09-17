@@ -11,6 +11,7 @@ namespace AeternumGames.ShapeEditor
     {
         internal double lastInteraction;
         internal float lastRenderTime;
+        internal float2 lastWindowSize;
         internal bool isLeftMousePressed;
         private bool isRightMousePressed;
         internal float2 mousePosition;
@@ -25,6 +26,7 @@ namespace AeternumGames.ShapeEditor
         private float2 customMouseHotspot;
         private string desiredTooltipText;
         private double tooltipDetectionTime;
+        private Vector2 tooltipExpectedMousePosition;
 
         /// <summary>Called by the Unity Editor to process events.</summary>
         private void OnGUI()
@@ -47,7 +49,8 @@ namespace AeternumGames.ShapeEditor
                 lastRenderTime = Time.realtimeSinceStartup - time;
 
                 // set the desired tooltip (unity calls a repaint after a brief pause for their own tooltip logic).
-                if (desiredTooltipText != null && Time.realtimeSinceStartupAsDouble - tooltipDetectionTime > 0.2f)
+                // ensure the mouse position is unchanged, otherwise it may show elsewhere outside of the window (issue #6).
+                if (desiredTooltipText != null && Time.realtimeSinceStartupAsDouble - tooltipDetectionTime > 0.2f && tooltipExpectedMousePosition == Extensions.GetCurrentMousePosition())
                     TooltipWindow.ShowTooltip(this, desiredTooltipText);
                 else
                     TooltipWindow.CloseTooltips();
@@ -217,10 +220,24 @@ namespace AeternumGames.ShapeEditor
 
                 if (DragAndDrop.paths.Length > 0)
                 {
-                    OpenProject(DragAndDrop.paths[0]);
+                    OnDragDrop(DragAndDrop.paths[0]);
                 }
 
                 e.Use();
+            }
+
+            // detect window resizing and invoke an event.
+            if (!position.size.Equals(lastWindowSize))
+            {
+                if (lastWindowSize.Equals(float2.zero))
+                {
+                    lastWindowSize = position.size;
+                    return;
+                }
+
+                var screenDelta = (float2)position.size - lastWindowSize;
+                OnWindowResize(lastWindowSize, screenDelta);
+                lastWindowSize = position.size;
             }
         }
 
@@ -234,6 +251,7 @@ namespace AeternumGames.ShapeEditor
         private void UpdateTooltipDetectionTime()
         {
             tooltipDetectionTime = Time.realtimeSinceStartupAsDouble;
+            tooltipExpectedMousePosition = Extensions.GetCurrentMousePosition();
         }
 
         /// <summary>Called when a new 2D Shape Editor window is created.</summary>
