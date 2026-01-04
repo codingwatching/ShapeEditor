@@ -140,6 +140,16 @@ namespace AeternumGames.ShapeEditor
             {
                 return false;
             }
+
+            /// <summary>Resets the camera position and rotation to the defaults.</summary>
+            [Instructions(
+                title: "Reset camera",
+                description: "Centers the camera by resetting the position and rotation.",
+                shortcut: "H key"
+            )]
+            public virtual void UserResetCamera()
+            {
+            }
         }
     }
 }

@@ -22,14 +22,6 @@ namespace AeternumGames.ShapeEditor
         };
 
         private static readonly float2 windowSize = new float2(360, 290);
-        private GuiMaterialIndexButton buttonSetBrushMaterial1;
-        private GuiMaterialIndexButton buttonSetBrushMaterial2;
-        private GuiMaterialIndexButton buttonSetBrushMaterial3;
-        private GuiMaterialIndexButton buttonSetBrushMaterial4;
-        private GuiMaterialIndexButton buttonSetBrushMaterial5;
-        private GuiMaterialIndexButton buttonSetBrushMaterial6;
-        private GuiMaterialIndexButton buttonSetBrushMaterial7;
-        private GuiMaterialIndexButton buttonSetBrushMaterial8;
         private GuiMaterialEditorViewport viewport;
 
         public MaterialEditorWindow() : base(float2.zero, windowSize) { }
@@ -43,20 +35,8 @@ namespace AeternumGames.ShapeEditor
             position = GetCenterPosition();
 
             Add(new GuiWindowTitle("Material Editor"));
-
-            Add(viewport = new GuiMaterialEditorViewport(new float2(1, 41), new float2(windowSize.x - 2, windowSize.y - 42)));
-
-            var horizontalLayout = new GuiHorizontalLayout(this, 1, 21);
-            horizontalLayout.Add(new GuiButton(resources.shapeEditorNew, 20, UserResetMaterials));
-            horizontalLayout.Space(5);
-            horizontalLayout.Add(buttonSetBrushMaterial1 = new GuiMaterialIndexButton("1", 20, materialIndexToColor[0], viewport.UserSetBrushMaterial1));
-            horizontalLayout.Add(buttonSetBrushMaterial2 = new GuiMaterialIndexButton("2", 20, materialIndexToColor[1], viewport.UserSetBrushMaterial2));
-            horizontalLayout.Add(buttonSetBrushMaterial3 = new GuiMaterialIndexButton("3", 20, materialIndexToColor[2], viewport.UserSetBrushMaterial3));
-            horizontalLayout.Add(buttonSetBrushMaterial4 = new GuiMaterialIndexButton("4", 20, materialIndexToColor[3], viewport.UserSetBrushMaterial4));
-            horizontalLayout.Add(buttonSetBrushMaterial5 = new GuiMaterialIndexButton("5", 20, materialIndexToColor[4], viewport.UserSetBrushMaterial5));
-            horizontalLayout.Add(buttonSetBrushMaterial6 = new GuiMaterialIndexButton("6", 20, materialIndexToColor[5], viewport.UserSetBrushMaterial6));
-            horizontalLayout.Add(buttonSetBrushMaterial7 = new GuiMaterialIndexButton("7", 20, materialIndexToColor[6], viewport.UserSetBrushMaterial7));
-            horizontalLayout.Add(buttonSetBrushMaterial8 = new GuiMaterialIndexButton("8", 20, materialIndexToColor[7], viewport.UserSetBrushMaterial8));
+            Add(viewport = new GuiMaterialEditorViewport(new float2(1, 63), new float2(windowSize.x - 2, windowSize.y - 64)));
+            OpenChildWindow(new GuiMaterialEditorTopToolbarWindow(new float2(1, 21), float2.zero));
         }
 
         private float2 GetCenterPosition()
@@ -69,21 +49,12 @@ namespace AeternumGames.ShapeEditor
 
         public override void OnRender()
         {
-            buttonSetBrushMaterial1.isChecked = viewport.materialIndex == 0;
-            buttonSetBrushMaterial2.isChecked = viewport.materialIndex == 1;
-            buttonSetBrushMaterial3.isChecked = viewport.materialIndex == 2;
-            buttonSetBrushMaterial4.isChecked = viewport.materialIndex == 3;
-            buttonSetBrushMaterial5.isChecked = viewport.materialIndex == 4;
-            buttonSetBrushMaterial6.isChecked = viewport.materialIndex == 5;
-            buttonSetBrushMaterial7.isChecked = viewport.materialIndex == 6;
-            buttonSetBrushMaterial8.isChecked = viewport.materialIndex == 7;
-
             base.OnRender();
         }
 
         protected override void OnResize()
         {
-            viewport.size = new float2(size.x - 2, size.y - 42);
+            viewport.size = new float2(size.x - 2, size.y - 64);
         }
 
         [Instructions(title: "Reset all surfaces to material index number one.", description: "Resets all materials assignments in the project to the default material slot which appears as white.")]
@@ -108,6 +79,66 @@ namespace AeternumGames.ShapeEditor
                     var segment = shape.segments[j];
                     segment.material = 0;
                 }
+            }
+        }
+
+        private class GuiMaterialEditorTopToolbarWindow : GuiWindow
+        {
+            private MaterialEditorWindow materialEditor => parent as MaterialEditorWindow;
+
+            private GuiMaterialIndexButton buttonSetBrushMaterial1;
+            private GuiMaterialIndexButton buttonSetBrushMaterial2;
+            private GuiMaterialIndexButton buttonSetBrushMaterial3;
+            private GuiMaterialIndexButton buttonSetBrushMaterial4;
+            private GuiMaterialIndexButton buttonSetBrushMaterial5;
+            private GuiMaterialIndexButton buttonSetBrushMaterial6;
+            private GuiMaterialIndexButton buttonSetBrushMaterial7;
+            private GuiMaterialIndexButton buttonSetBrushMaterial8;
+
+            public GuiMaterialEditorTopToolbarWindow(float2 position, float2 size) : base(position, size) { }
+
+            private GuiHorizontalLayout horizontalLayout;
+
+            public override void OnActivate()
+            {
+                base.OnActivate();
+
+                var resources = ShapeEditorResources.Instance;
+                colorWindowBackground = new Color(0.192f, 0.192f, 0.192f);
+
+                var menu = new GuiMenuStrip();
+                Add(menu);
+
+                var viewMenu = menu.Add("View");
+                viewMenu.Add("Reset Camera", materialEditor.viewport.camera.UserResetCamera);
+
+                horizontalLayout = new GuiHorizontalLayout(this, 1, 21);
+                horizontalLayout.Add(new GuiButton(resources.shapeEditorNew, 20, materialEditor.UserResetMaterials));
+                horizontalLayout.Space(5);
+                horizontalLayout.Add(buttonSetBrushMaterial1 = new GuiMaterialIndexButton("1", 20, materialIndexToColor[0], materialEditor.viewport.UserSetBrushMaterial1));
+                horizontalLayout.Add(buttonSetBrushMaterial2 = new GuiMaterialIndexButton("2", 20, materialIndexToColor[1], materialEditor.viewport.UserSetBrushMaterial2));
+                horizontalLayout.Add(buttonSetBrushMaterial3 = new GuiMaterialIndexButton("3", 20, materialIndexToColor[2], materialEditor.viewport.UserSetBrushMaterial3));
+                horizontalLayout.Add(buttonSetBrushMaterial4 = new GuiMaterialIndexButton("4", 20, materialIndexToColor[3], materialEditor.viewport.UserSetBrushMaterial4));
+                horizontalLayout.Add(buttonSetBrushMaterial5 = new GuiMaterialIndexButton("5", 20, materialIndexToColor[4], materialEditor.viewport.UserSetBrushMaterial5));
+                horizontalLayout.Add(buttonSetBrushMaterial6 = new GuiMaterialIndexButton("6", 20, materialIndexToColor[5], materialEditor.viewport.UserSetBrushMaterial6));
+                horizontalLayout.Add(buttonSetBrushMaterial7 = new GuiMaterialIndexButton("7", 20, materialIndexToColor[6], materialEditor.viewport.UserSetBrushMaterial7));
+                horizontalLayout.Add(buttonSetBrushMaterial8 = new GuiMaterialIndexButton("8", 20, materialIndexToColor[7], materialEditor.viewport.UserSetBrushMaterial8));
+            }
+
+            public override void OnRender()
+            {
+                size = new float2(parent.size.x - 2, 42f);
+
+                buttonSetBrushMaterial1.isChecked = materialEditor.viewport.materialIndex == 0;
+                buttonSetBrushMaterial2.isChecked = materialEditor.viewport.materialIndex == 1;
+                buttonSetBrushMaterial3.isChecked = materialEditor.viewport.materialIndex == 2;
+                buttonSetBrushMaterial4.isChecked = materialEditor.viewport.materialIndex == 3;
+                buttonSetBrushMaterial5.isChecked = materialEditor.viewport.materialIndex == 4;
+                buttonSetBrushMaterial6.isChecked = materialEditor.viewport.materialIndex == 5;
+                buttonSetBrushMaterial7.isChecked = materialEditor.viewport.materialIndex == 6;
+                buttonSetBrushMaterial8.isChecked = materialEditor.viewport.materialIndex == 7;
+
+                base.OnRender();
             }
         }
 

@@ -28,12 +28,10 @@ namespace AeternumGames.ShapeEditor
             /// <param name="editor">The shape editor window.</param>
             public CameraFirstPerson(ShapeEditorWindow editor) : base(editor)
             {
-                transform = new Transform();
-                ResetCamera();
+                UserResetCamera();
             }
 
-            /// <summary>Resets the camera position and rotation to the defaults.</summary>
-            public void ResetCamera()
+            public override void UserResetCamera()
             {
                 transform.position = Vector3.back * 4f + Vector3.up * 2f + Vector3.left * 4f;
                 rot = new Vector2(-43.25f, 20f);
@@ -106,7 +104,7 @@ namespace AeternumGames.ShapeEditor
                 if (keyCode == KeyCode.E) { keyboard_e = true; return true; }
                 if (keyCode == KeyCode.H)
                 {
-                    ResetCamera();
+                    UserResetCamera();
                     return true;
                 }
                 return false;
