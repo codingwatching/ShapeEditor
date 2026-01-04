@@ -46,7 +46,7 @@ namespace AeternumGames.ShapeEditor
             // overridable pre-render callback.
             OnPreRender();
 
-            var temporaryRenderTexture = GLUtilities.DrawTemporaryRenderTexture((int)drawRect.width, (int)drawRect.height, 24, OnRenderViewport);
+            var temporaryRenderTexture = GLUtilities.DrawTemporaryRenderTexture((int)drawRect.width, (int)drawRect.height, 24, 4, OnRenderViewport);
             GLUtilities.DrawGuiTextured(temporaryRenderTexture, () =>
             {
                 GLUtilities.DrawFlippedUvRectangle(drawRect.x, drawRect.y, drawRect.width, drawRect.height);
@@ -169,7 +169,7 @@ namespace AeternumGames.ShapeEditor
         { }
 
         /// <summary>
-        /// Called when the 3D world is to be drawn the render texture with a 3D projection matrix.
+        /// Called when the 3D world is to be drawn on the render texture with a 3D projection matrix.
         /// </summary>
         protected virtual void OnRender3D()
         { }

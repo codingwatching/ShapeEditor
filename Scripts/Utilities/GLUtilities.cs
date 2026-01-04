@@ -148,10 +148,11 @@ namespace AeternumGames.ShapeEditor
         /// </param>
         /// <param name="action">The action to be called to draw primitives.</param>
         /// <returns>Returns the temporary render texture. It must be released with <see cref="RenderTexture.ReleaseTemporary(RenderTexture)"/>.</returns>
-        public static RenderTexture DrawTemporaryRenderTexture(int width, int height, int depthBuffer, System.Action<RenderTexture> action)
+        public static RenderTexture DrawTemporaryRenderTexture(int width, int height, int depthBuffer, int antiAliasing, System.Action<RenderTexture> action)
         {
             var originalRenderTexture = RenderTexture.active;
             var temporaryRenderTexture = RenderTexture.GetTemporary(width, height, depthBuffer);
+            temporaryRenderTexture.antiAliasing = antiAliasing;
             RenderTexture.active = temporaryRenderTexture;
             GL.PushMatrix();
 
