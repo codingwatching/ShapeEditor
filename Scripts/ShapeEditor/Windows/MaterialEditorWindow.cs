@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR
 
+using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
@@ -8,7 +9,7 @@ using GLUtilities3D = AeternumGames.ShapeEditor.GLUtilities.GLUtilities3D;
 namespace AeternumGames.ShapeEditor
 {
     /// <summary>The 3D material editor window.</summary>
-    public class MaterialEditorWindow : GuiResizableWindow
+    public partial class MaterialEditorWindow : GuiResizableWindow
     {
         private static readonly Color32[] materialIndexToColor = {
             new Color32(255, 255, 255, 255),
@@ -34,9 +35,12 @@ namespace AeternumGames.ShapeEditor
             colorWindowBackground = new Color(0.192f, 0.192f, 0.192f);
             position = GetCenterPosition();
 
+            ValidateTools();
+
             Add(new GuiWindowTitle("Material Editor"));
             Add(viewport = new GuiMaterialEditorViewport(new float2(1, 63), new float2(windowSize.x - 2, windowSize.y - 64)));
             OpenChildWindow(new GuiMaterialEditorTopToolbarWindow(new float2(1, 21), float2.zero));
+            OpenChildWindow(new GuiMaterialEditorToolbarWindow(new float2(21, 85)));
         }
 
         private float2 GetCenterPosition()
@@ -45,11 +49,6 @@ namespace AeternumGames.ShapeEditor
                 Mathf.RoundToInt((editor.width / 2f) - (windowSize.x / 2f)),
                 Mathf.RoundToInt((editor.height / 2f) - (windowSize.y / 2f))
             );
-        }
-
-        public override void OnRender()
-        {
-            base.OnRender();
         }
 
         protected override void OnResize()
@@ -145,14 +144,16 @@ namespace AeternumGames.ShapeEditor
         /// <summary>Represents the 3D viewport of the material editor.</summary>
         private class GuiMaterialEditorViewport : GuiViewport
         {
+            private MaterialEditorWindow materialEditor => parent as MaterialEditorWindow;
+
             private CameraFirstPerson firstPersonCamera;
 
             private Mesh mesh;
-            private MeshRaycast meshRaycast;
+            public MeshRaycast meshRaycast;
             private MeshColors meshColors;
-            private MeshTriangleLookupTable lookupTable;
+            public MeshTriangleLookupTable lookupTable;
             public byte materialIndex { get; private set; }
-            private byte materialIndexUnderMouse;
+            public byte materialIndexUnderMouse = 255;
 
             public GuiMaterialEditorViewport(float2 size) : base(size)
             {
@@ -165,153 +166,25 @@ namespace AeternumGames.ShapeEditor
             // use a first-person camera.
             public override Camera camera => firstPersonCamera ??= new CameraFirstPerson(editor);
 
-            private void RebuildMesh()
+            public override bool IsBusy() => materialEditor.activeTool.IsBusy();
+
+            public override void OnMouseDown(int button) => materialEditor.activeTool.OnMouseDown(button);
+
+            public override void OnMouseUp(int button) => materialEditor.activeTool.OnMouseUp(button);
+
+            public override void OnGlobalMouseUp(int button) => materialEditor.activeTool.OnGlobalMouseUp(button);
+
+            public override void OnMouseDrag(int button, float2 screenDelta, float2 gridDelta) => materialEditor.activeTool.OnMouseDrag(button, screenDelta, gridDelta);
+
+            public override void OnGlobalMouseDrag(int button, float2 screenDelta, float2 gridDelta)
             {
-                // ensure the project data is ready.
-                editor.project.Validate();
-                var convexPolygons2D = editor.project.GenerateConvexPolygons();
-                convexPolygons2D.CalculateBounds2D();
-                mesh = MeshGenerator.CreateExtrudedPolygonMesh(convexPolygons2D, 0.5f);
-                meshRaycast = new MeshRaycast(mesh);
-                lookupTable = new MeshTriangleLookupTable(meshRaycast.Triangles, meshRaycast.Vertices, editor.project);
-                meshColors = new MeshColors(mesh);
+                materialEditor.activeTool.OnGlobalMouseDrag(button, screenDelta, gridDelta);
+                base.OnGlobalMouseDrag(button, screenDelta, gridDelta);
             }
 
-            public override void OnFocus()
-            {
-                if (isMouseOver)
-                {
-                    RebuildMesh();
-                }
-            }
+            public override void OnMouseMove(float2 screenDelta, float2 gridDelta) => materialEditor.activeTool.OnMouseMove(screenDelta, gridDelta);
 
-            protected override void OnPreRender()
-            {
-                if (mesh == null)
-                    RebuildMesh();
-
-                UpdateMeshColors();
-            }
-
-            protected override void OnRender3D()
-            {
-                GLUtilities3D.DrawGuiTextured(ShapeEditorResources.Instance.shapeEditorDefaultMaterial.mainTexture, camera.transform.position, () =>
-                {
-                    Graphics.DrawMeshNow(mesh, Matrix4x4.identity);
-                });
-
-                // no need to do raycasting when the mouse isn't over the window.
-                if (isMouseOver)
-                {
-                    MeshRaycastHit hit = null;
-                    materialIndexUnderMouse = 255;
-
-                    GLUtilities3D.DrawGuiLines(() =>
-                    {
-                        var ray = camera.ScreenPointToRay(mousePosition);
-
-                        if (meshRaycast.Raycast(ray.origin, ray.direction, out hit))
-                        {
-                            if (hit.normal.z.EqualsWithEpsilon5(0.0f))
-                            {
-                                GL.Color(materialIndexToColor[materialIndex]);
-
-                                var pos = new float2(hit.point.x, -hit.point.y);
-                                var segment = editor.project.FindSegmentLineAtPosition(pos, 1f);
-                                if (lookupTable.TryGetTrianglesForSegment(segment, out var triangleIndices))
-                                {
-                                    foreach (var triangleIndex in triangleIndices)
-                                    {
-                                        var v1 = lookupTable.Vertices[lookupTable.Triangles[triangleIndex]];
-                                        var v2 = lookupTable.Vertices[lookupTable.Triangles[triangleIndex + 1]];
-                                        var v3 = lookupTable.Vertices[lookupTable.Triangles[triangleIndex + 2]];
-
-                                        GLUtilities3D.DrawLine(v1, v2);
-                                        GLUtilities3D.DrawLine(v2, v3);
-                                        GLUtilities3D.DrawLine(v3, v1);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // todo: triangle based lookup table for shapes:
-
-                                var pos = new float2(hit.point.x, -hit.point.y);
-                                var shape = editor.FindShapeAtGridPosition(pos);
-                                if (shape != null)
-                                {
-                                    GL.Color(materialIndexToColor[materialIndex]);
-                                    GLUtilities3D.DrawLine(hit.vertex1, hit.vertex2);
-                                    GLUtilities3D.DrawLine(hit.vertex2, hit.vertex3);
-                                    GLUtilities3D.DrawLine(hit.vertex3, hit.vertex1);
-                                }
-                            }
-                        }
-                    });
-
-                    if (hit != null)
-                    {
-                        var pos = new float2(hit.point.x, -hit.point.y);
-                        if (hit.normal.z.EqualsWithEpsilon5(0.0f))
-                        {
-                            if (isActive && editor.isLeftMousePressed)
-                            {
-                                if (lookupTable.TryGetSegmentsForTriangleIndex(hit.triangleIndex, out var segments))
-                                {
-                                    foreach (var segment in segments)
-                                    {
-                                        segment.material = materialIndex;
-                                    }
-                                }
-                            }
-
-                            var segmentUnderMouse = editor.project.FindSegmentLineAtPosition(pos, 1f);
-                            materialIndexUnderMouse = 0;
-                            if (segmentUnderMouse != null)
-                                materialIndexUnderMouse = segmentUnderMouse.material;
-                        }
-                        else
-                        {
-                            materialIndexUnderMouse = 0;
-
-                            // todo: triangle based lookup table for shapes:
-                            var shape = editor.FindShapeAtGridPosition(pos);
-                            if (isActive && editor.isLeftMousePressed)
-                            {
-                                if (shape != null)
-                                {
-                                    if (hit.normal.z < 0.5f)
-                                    {
-                                        shape.frontMaterial = materialIndex;
-                                    }
-                                    else if (hit.normal.z > 0.5f)
-                                    {
-                                        shape.backMaterial = materialIndex;
-                                    }
-                                }
-                            }
-
-                            if (shape != null)
-                            {
-                                if (hit.normal.z < 0.5f)
-                                {
-                                    materialIndexUnderMouse = shape.frontMaterial;
-                                }
-                                else if (hit.normal.z > 0.5f)
-                                {
-                                    materialIndexUnderMouse = shape.backMaterial;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            protected override void OnPostRender2D()
-            {
-                if (materialIndexUnderMouse != 255)
-                    GLUtilities.DrawGuiText(ShapeEditorResources.fontSegoeUI14, "Material under mouse: " + materialIndexUnderMouse, new float2(10, 10));
-            }
+            public override bool OnMouseScroll(float delta) => materialEditor.activeTool.OnMouseScroll(delta);
 
             public override bool OnKeyDown(KeyCode keyCode)
             {
@@ -326,7 +199,89 @@ namespace AeternumGames.ShapeEditor
                     case KeyCode.Alpha7: UserSetBrushMaterial7(); return true;
                     case KeyCode.Alpha8: UserSetBrushMaterial8(); return true;
                 }
+                if (materialEditor.activeTool.OnKeyDown(keyCode))
+                    return true;
                 return base.OnKeyDown(keyCode);
+            }
+
+            public override bool OnKeyUp(KeyCode keyCode)
+            {
+                if (materialEditor.activeTool.OnKeyUp(keyCode))
+                    return true;
+                return base.OnKeyUp(keyCode);
+            }
+
+            public override void OnFocus()
+            {
+                if (isMouseOver)
+                {
+                    RebuildMesh();
+                }
+
+                materialEditor.activeTool.OnFocus();
+            }
+
+            public override void OnFocusLost() => materialEditor.activeTool.OnFocusLost();
+
+            protected override void OnPreRender()
+            {
+                if (mesh == null)
+                    RebuildMesh();
+
+                UpdateMeshColors();
+
+                materialEditor.activeTool.OnPreRender();
+            }
+
+            protected override void OnPreRender2D()
+            {
+                materialEditor.activeTool.OnPreRender2D();
+            }
+
+            protected override void OnRender3D()
+            {
+                GLUtilities3D.DrawGuiTextured(ShapeEditorResources.Instance.shapeEditorDefaultMaterial.mainTexture, camera.transform.position, () =>
+                {
+                    Graphics.DrawMeshNow(mesh, Matrix4x4.identity);
+                });
+
+                materialEditor.activeTool.OnRender3D();
+            }
+
+            private GuiMaterialIndexButton guiMaterialIndexTooltipButton = new GuiMaterialIndexButton("1", 20, materialIndexToColor[0], null);
+
+            private void RenderMaterialIndexTooltip(byte materialIndexUnderMouse)
+            {
+                guiMaterialIndexTooltipButton.editor = editor;
+                guiMaterialIndexTooltipButton.color = materialIndexToColor[materialIndexUnderMouse];
+                guiMaterialIndexTooltipButton.text = (materialIndexUnderMouse + 1).ToString();
+                guiMaterialIndexTooltipButton.position = mousePosition + new float2(10, 10);
+                guiMaterialIndexTooltipButton.OnRender();
+            }
+
+            protected override void OnPostRender2D()
+            {
+                materialEditor.activeTool.OnPostRender2D();
+
+                if (materialIndexUnderMouse != 255)
+                    RenderMaterialIndexTooltip(materialIndexUnderMouse);
+            }
+
+            protected override void OnPostRender()
+            {
+                materialEditor.activeTool.OnPostRender();
+            }
+
+            private void RebuildMesh()
+            {
+                // ensure the project data is ready.
+                editor.project.Validate();
+                var convexPolygons2D = editor.project.GenerateConvexPolygons();
+                convexPolygons2D.CalculateBounds2D();
+                mesh = MeshGenerator.CreateExtrudedPolygonMesh(convexPolygons2D, 0.5f);
+                meshRaycast = new MeshRaycast(mesh);
+                lookupTable = new MeshTriangleLookupTable(meshRaycast.Triangles, meshRaycast.Vertices, editor.project);
+                meshColors = new MeshColors(mesh);
             }
 
             private void UpdateMeshColors()
@@ -697,7 +652,8 @@ namespace AeternumGames.ShapeEditor
         /// <summary>Displays a small color line at the bottom of the button.</summary>
         private class GuiMaterialIndexButton : GuiButton
         {
-            private Color32 color;
+            /// <summary>Gets or sets the color of the line.</summary>
+            public Color32 color { get; set; }
 
             public GuiMaterialIndexButton(string text, float2 size, Color32 color, System.Action onClick) : base(text, size, onClick)
             {
@@ -716,6 +672,542 @@ namespace AeternumGames.ShapeEditor
                     GLUtilities.DrawRectangle(rect.x + 2, rect.yMax - 4, rect.width - 4, 2);
                 });
             }
+        }
+
+        public class GuiMaterialEditorToolbarWindow : GuiWindow
+        {
+            private MaterialEditorWindow materialEditor => parent as MaterialEditorWindow;
+
+            private GuiButton cameraButton;
+            private GuiButton brushButton;
+
+            public GuiMaterialEditorToolbarWindow(float2 position) : base(position, float2.zero) { }
+
+            private GuiVerticalLayout verticalLayout;
+
+            public override void OnActivate()
+            {
+                base.OnActivate();
+
+                verticalLayout = new GuiVerticalLayout(this);
+
+                verticalLayout.Add(cameraButton = new GuiButton(ShapeEditorResources.Instance.shapeEditorSelectBox, 28, materialEditor.UserSwitchToCameraTool));
+                verticalLayout.Add(brushButton = new GuiButton(ShapeEditorResources.Instance.shapeEditorDraw, 28, materialEditor.UserSwitchToBrushTool));
+
+                size = verticalLayout.windowSize;
+            }
+
+            public override void OnRender()
+            {
+                Type type = materialEditor.activeTool.GetType();
+                cameraButton.isChecked = type == typeof(GuiMaterialEditorCameraTool);
+                brushButton.isChecked = type == typeof(GuiMaterialEditorBrushTool);
+
+                base.OnRender();
+            }
+        }
+
+        internal void UserSwitchToCameraTool() => SwitchTool(cameraTool);
+
+        internal void UserSwitchToBrushTool() => SwitchTool(brushTool);
+
+        private interface GuiMaterialEditorTool : IEditorEventReceiver
+        {
+            /// <summary>The material editor window.</summary>
+            public MaterialEditorWindow window { get; set; }
+
+            /// <summary>
+            /// The parent tool that called this tool (if any), to which the editor will return once the
+            /// tool is finished. This is set when a single-use tool is instantiated with a keyboard binding.
+            /// </summary>
+            public GuiMaterialEditorTool parent { get; set; }
+
+            /// <summary>
+            /// Called at the beginning of the control's <see cref="OnRender"/> function. This draws
+            /// on the normal screen.
+            /// </summary>
+            public void OnPreRender();
+
+            /// <summary>
+            /// Called before drawing the 3D world on the render texture with a 2D pixel matrix.
+            /// </summary>
+            public void OnPreRender2D();
+
+            /// <summary>
+            /// Called when the 3D world is to be drawn on the render texture with a 3D projection matrix.
+            /// </summary>
+            public void OnRender3D();
+
+            /// <summary>
+            /// Called after drawing the 3D world on the render texture with a 2D pixel matrix.
+            /// </summary>
+            public void OnPostRender2D();
+
+            /// <summary>
+            /// Called at the end of the control's <see cref="OnRender"/> function. This draws
+            /// on the normal screen.
+            /// </summary>
+            public void OnPostRender();
+        }
+
+        private class GuiMaterialEditorCameraTool : Tool, GuiMaterialEditorTool
+        {
+            public MaterialEditorWindow window { get; set; }
+            public GuiMaterialEditorViewport viewport => window.viewport;
+            GuiMaterialEditorTool GuiMaterialEditorTool.parent { get; set; }
+
+            /// <summary>
+            /// Gets whether the object is busy and has to maintain the input focus, making it
+            /// impossible to switch to another object.
+            /// </summary>
+            public override bool IsBusy()
+            {
+                return base.IsBusy();
+            }
+
+            /// <summary>Called when the object is activated.</summary>
+            public override void OnActivate()
+            {
+            }
+
+            /// <summary>Called when the object is deactivated.</summary>
+            public override void OnDeactivate()
+            {
+            }
+
+            public void OnPreRender()
+            {
+            }
+
+            public void OnPreRender2D()
+            {
+            }
+
+            public void OnRender3D()
+            {
+                // no need to do raycasting when the mouse isn't over the window.
+                if (viewport.isMouseOver)
+                {
+                    MeshRaycastHit hit = null;
+                    viewport.materialIndexUnderMouse = 255;
+
+                    GLUtilities3D.DrawGuiLines(() =>
+                    {
+                        var ray = viewport.camera.ScreenPointToRay(viewport.mousePosition);
+
+                        if (viewport.meshRaycast.Raycast(ray.origin, ray.direction, out hit))
+                        {
+                            if (hit.normal.z.EqualsWithEpsilon5(0.0f))
+                            {
+                                GL.Color(Color.black);
+
+                                var pos = new float2(hit.point.x, -hit.point.y);
+                                var segment = editor.project.FindSegmentLineAtPosition(pos, 1f);
+                                if (viewport.lookupTable.TryGetTrianglesForSegment(segment, out var triangleIndices))
+                                {
+                                    foreach (var triangleIndex in triangleIndices)
+                                    {
+                                        var v1 = viewport.lookupTable.Vertices[viewport.lookupTable.Triangles[triangleIndex]];
+                                        var v2 = viewport.lookupTable.Vertices[viewport.lookupTable.Triangles[triangleIndex + 1]];
+                                        var v3 = viewport.lookupTable.Vertices[viewport.lookupTable.Triangles[triangleIndex + 2]];
+
+                                        GLUtilities3D.DrawLine(v1, v2);
+                                        GLUtilities3D.DrawLine(v2, v3);
+                                        GLUtilities3D.DrawLine(v3, v1);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // todo: triangle based lookup table for shapes:
+
+                                var pos = new float2(hit.point.x, -hit.point.y);
+                                var shape = editor.FindShapeAtGridPosition(pos);
+                                if (shape != null)
+                                {
+                                    GL.Color(Color.black);
+                                    GLUtilities3D.DrawLine(hit.vertex1, hit.vertex2);
+                                    GLUtilities3D.DrawLine(hit.vertex2, hit.vertex3);
+                                    GLUtilities3D.DrawLine(hit.vertex3, hit.vertex1);
+                                }
+                            }
+                        }
+                    });
+
+                    if (hit != null)
+                    {
+                        var pos = new float2(hit.point.x, -hit.point.y);
+                        if (hit.normal.z.EqualsWithEpsilon5(0.0f))
+                        {
+                            var segmentUnderMouse = editor.project.FindSegmentLineAtPosition(pos, 1f);
+                            viewport.materialIndexUnderMouse = 0;
+                            if (segmentUnderMouse != null)
+                                viewport.materialIndexUnderMouse = segmentUnderMouse.material;
+                        }
+                        else
+                        {
+                            viewport.materialIndexUnderMouse = 0;
+
+                            // todo: triangle based lookup table for shapes:
+                            var shape = editor.FindShapeAtGridPosition(pos);
+                            if (shape != null)
+                            {
+                                if (hit.normal.z < 0.5f)
+                                {
+                                    viewport.materialIndexUnderMouse = shape.frontMaterial;
+                                }
+                                else if (hit.normal.z > 0.5f)
+                                {
+                                    viewport.materialIndexUnderMouse = shape.backMaterial;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            public void OnPostRender2D()
+            {
+            }
+
+            public void OnPostRender()
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse down event.</summary>
+            public override void OnMouseDown(int button)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse up event.</summary>
+            public override void OnMouseUp(int button)
+            {
+            }
+
+            /// <summary>Called when the object receives a global mouse up event.</summary>
+            public override void OnGlobalMouseUp(int button)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse drag event.</summary>
+            public override void OnMouseDrag(int button, float2 screenDelta, float2 gridDelta)
+            {
+            }
+
+            /// <summary>Called when the object receives a global mouse drag event.</summary>
+            public override void OnGlobalMouseDrag(int button, float2 screenDelta, float2 gridDelta)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse move event.</summary>
+            public override void OnMouseMove(float2 screenDelta, float2 gridDelta)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse scroll event.</summary>
+            public override bool OnMouseScroll(float delta)
+            {
+                return base.OnMouseScroll(delta);
+            }
+
+            /// <summary>Called when the object receives a key down event.</summary>
+            public override bool OnKeyDown(KeyCode keyCode)
+            {
+                return base.OnKeyDown(keyCode);
+            }
+
+            /// <summary>Called when the object receives a key up event.</summary>
+            public override bool OnKeyUp(KeyCode keyCode)
+            {
+                return base.OnKeyUp(keyCode);
+            }
+
+            /// <summary>Called when the object receives input focus.</summary>
+            public override void OnFocus()
+            {
+            }
+
+            /// <summary>Called when the object loses input focus.</summary>
+            public override void OnFocusLost()
+            {
+            }
+        }
+
+        private class GuiMaterialEditorBrushTool : Tool, GuiMaterialEditorTool
+        {
+            public MaterialEditorWindow window { get; set; }
+            public GuiMaterialEditorViewport viewport => window.viewport;
+            GuiMaterialEditorTool GuiMaterialEditorTool.parent { get; set; }
+
+            /// <summary>
+            /// Gets whether the object is busy and has to maintain the input focus, making it
+            /// impossible to switch to another object.
+            /// </summary>
+            public override bool IsBusy()
+            {
+                return base.IsBusy();
+            }
+
+            /// <summary>Called when the object is activated.</summary>
+            public override void OnActivate()
+            {
+            }
+
+            /// <summary>Called when the object is deactivated.</summary>
+            public override void OnDeactivate()
+            {
+            }
+
+            public void OnPreRender()
+            {
+            }
+
+            public void OnPreRender2D()
+            {
+            }
+
+            public void OnRender3D()
+            {
+                // no need to do raycasting when the mouse isn't over the window.
+                if (viewport.isMouseOver)
+                {
+                    MeshRaycastHit hit = null;
+                    viewport.materialIndexUnderMouse = 255;
+
+                    GLUtilities3D.DrawGuiLines(() =>
+                    {
+                        var ray = viewport.camera.ScreenPointToRay(viewport.mousePosition);
+
+                        if (viewport.meshRaycast.Raycast(ray.origin, ray.direction, out hit))
+                        {
+                            if (hit.normal.z.EqualsWithEpsilon5(0.0f))
+                            {
+                                GL.Color(materialIndexToColor[viewport.materialIndex]);
+
+                                var pos = new float2(hit.point.x, -hit.point.y);
+                                var segment = editor.project.FindSegmentLineAtPosition(pos, 1f);
+                                if (viewport.lookupTable.TryGetTrianglesForSegment(segment, out var triangleIndices))
+                                {
+                                    foreach (var triangleIndex in triangleIndices)
+                                    {
+                                        var v1 = viewport.lookupTable.Vertices[viewport.lookupTable.Triangles[triangleIndex]];
+                                        var v2 = viewport.lookupTable.Vertices[viewport.lookupTable.Triangles[triangleIndex + 1]];
+                                        var v3 = viewport.lookupTable.Vertices[viewport.lookupTable.Triangles[triangleIndex + 2]];
+
+                                        GLUtilities3D.DrawLine(v1, v2);
+                                        GLUtilities3D.DrawLine(v2, v3);
+                                        GLUtilities3D.DrawLine(v3, v1);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // todo: triangle based lookup table for shapes:
+
+                                var pos = new float2(hit.point.x, -hit.point.y);
+                                var shape = editor.FindShapeAtGridPosition(pos);
+                                if (shape != null)
+                                {
+                                    GL.Color(materialIndexToColor[viewport.materialIndex]);
+                                    GLUtilities3D.DrawLine(hit.vertex1, hit.vertex2);
+                                    GLUtilities3D.DrawLine(hit.vertex2, hit.vertex3);
+                                    GLUtilities3D.DrawLine(hit.vertex3, hit.vertex1);
+                                }
+                            }
+                        }
+                    });
+
+                    if (hit != null)
+                    {
+                        var pos = new float2(hit.point.x, -hit.point.y);
+                        if (hit.normal.z.EqualsWithEpsilon5(0.0f))
+                        {
+                            if (viewport.isActive && editor.isLeftMousePressed)
+                            {
+                                if (viewport.lookupTable.TryGetSegmentsForTriangleIndex(hit.triangleIndex, out var segments))
+                                {
+                                    foreach (var segment in segments)
+                                    {
+                                        segment.material = viewport.materialIndex;
+                                    }
+                                }
+                            }
+
+                            var segmentUnderMouse = editor.project.FindSegmentLineAtPosition(pos, 1f);
+                            viewport.materialIndexUnderMouse = 0;
+                            if (segmentUnderMouse != null)
+                                viewport.materialIndexUnderMouse = segmentUnderMouse.material;
+                        }
+                        else
+                        {
+                            viewport.materialIndexUnderMouse = 0;
+
+                            // todo: triangle based lookup table for shapes:
+                            var shape = editor.FindShapeAtGridPosition(pos);
+                            if (viewport.isActive && editor.isLeftMousePressed)
+                            {
+                                if (shape != null)
+                                {
+                                    if (hit.normal.z < 0.5f)
+                                    {
+                                        shape.frontMaterial = viewport.materialIndex;
+                                    }
+                                    else if (hit.normal.z > 0.5f)
+                                    {
+                                        shape.backMaterial = viewport.materialIndex;
+                                    }
+                                }
+                            }
+
+                            if (shape != null)
+                            {
+                                if (hit.normal.z < 0.5f)
+                                {
+                                    viewport.materialIndexUnderMouse = shape.frontMaterial;
+                                }
+                                else if (hit.normal.z > 0.5f)
+                                {
+                                    viewport.materialIndexUnderMouse = shape.backMaterial;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            public void OnPostRender2D()
+            {
+            }
+
+            public void OnPostRender()
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse down event.</summary>
+            public override void OnMouseDown(int button)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse up event.</summary>
+            public override void OnMouseUp(int button)
+            {
+            }
+
+            /// <summary>Called when the object receives a global mouse up event.</summary>
+            public override void OnGlobalMouseUp(int button)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse drag event.</summary>
+            public override void OnMouseDrag(int button, float2 screenDelta, float2 gridDelta)
+            {
+            }
+
+            /// <summary>Called when the object receives a global mouse drag event.</summary>
+            public override void OnGlobalMouseDrag(int button, float2 screenDelta, float2 gridDelta)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse move event.</summary>
+            public override void OnMouseMove(float2 screenDelta, float2 gridDelta)
+            {
+            }
+
+            /// <summary>Called when the object receives a mouse scroll event.</summary>
+            public override bool OnMouseScroll(float delta)
+            {
+                return base.OnMouseScroll(delta);
+            }
+
+            /// <summary>Called when the object receives a key down event.</summary>
+            public override bool OnKeyDown(KeyCode keyCode)
+            {
+                return base.OnKeyDown(keyCode);
+            }
+
+            /// <summary>Called when the object receives a key up event.</summary>
+            public override bool OnKeyUp(KeyCode keyCode)
+            {
+                return base.OnKeyUp(keyCode);
+            }
+
+            /// <summary>Called when the object receives input focus.</summary>
+            public override void OnFocus()
+            {
+            }
+
+            /// <summary>Called when the object loses input focus.</summary>
+            public override void OnFocusLost()
+            {
+            }
+        }
+    }
+
+    public partial class MaterialEditorWindow
+    {
+        /// <summary>The currently active viewport tool.</summary>
+        private GuiMaterialEditorTool activeTool;
+
+        private GuiMaterialEditorCameraTool cameraTool;
+        private GuiMaterialEditorBrushTool brushTool;
+
+        /// <summary>Ensures that a valid tools always exists, to handle C# reloads.</summary>
+        private void ValidateTools()
+        {
+            if (cameraTool == null)
+            {
+                cameraTool = new GuiMaterialEditorCameraTool();
+                brushTool = new GuiMaterialEditorBrushTool();
+            }
+
+            if (activeTool == null)
+                SwitchTool(cameraTool);
+        }
+
+        /// <summary>Switches the from current tool to the specified tool.</summary>
+        /// <param name="tool">The tool to switch to.</param>
+        private void SwitchTool(GuiMaterialEditorTool tool)
+        {
+            // if the tool is unchanged we ignore this call.
+            if (activeTool == tool) return;
+
+            // if there was an active tool we deactivate it.
+            if (activeTool != null)
+                activeTool.OnDeactivate();
+
+            // switch to the new tool and activate it.
+            tool.editor = editor;
+            tool.window = this;
+            activeTool = tool;
+            activeTool.OnActivate();
+
+            // fixme: not tested with single-use tools:
+            editor.TrySwitchActiveEventReceiver(activeTool);
+        }
+
+        /// <summary>
+        /// This function switches to the specified single-use tool and returns to the current tool
+        /// when it's done. This is useful for single-use tools that are instantiated with a
+        /// keyboard binding.
+        /// </summary>
+        /// <param name="tool">The single-use tool to switch to.</param>
+        private void UseTool(GuiMaterialEditorTool tool)
+        {
+            // prevent accidental errors.
+            if (activeTool == tool) { Debug.LogWarning("Cannot UseTool() the already active tool!"); return; }
+
+            // set the parent of the tool to be the currently active tool.
+            tool.parent = activeTool;
+
+            // switch to the new tool.
+            SwitchTool(tool);
+        }
+
+        /// <summary>Draws the active tool.</summary>
+        private void DrawTool()
+        {
+            if (activeTool != null)
+                activeTool.OnRender();
         }
     }
 }
